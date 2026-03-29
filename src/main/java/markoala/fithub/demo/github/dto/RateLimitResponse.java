@@ -10,7 +10,7 @@ import java.time.Instant;
  * @param resetAt   쿼타 리셋 시각 (UTC)
  */
 public record RateLimitResponse(
-        int limit,
-        int remaining,
-        Instant resetAt
-) {}
+                int limit,
+                int remaining,
+                Instant resetAt) {
+}
