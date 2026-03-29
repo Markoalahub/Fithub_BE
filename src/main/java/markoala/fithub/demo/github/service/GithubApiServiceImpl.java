@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import markoala.fithub.demo.github.dto.*;
 import markoala.fithub.demo.global.exception.GithubApiExecutionException;
 import org.kohsuke.github.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GithubApiServiceImpl implements GithubApiService {
 
+    @Value("${github.api.url:https://api.github.com}")
+    private String githubApiUrl;
+
     // ──────────────────────────────────────────────────────────────
     // GitHub 클라이언트 팩토리
     // ──────────────────────────────────────────────────────────────
@@ -38,6 +42,7 @@ public class GithubApiServiceImpl implements GithubApiService {
         try {
             return new GitHubBuilder()
                     .withOAuthToken(accessToken)
+                    .withEndpoint(githubApiUrl)
                     .build();
         } catch (IOException e) {
             throw new GithubApiExecutionException(
