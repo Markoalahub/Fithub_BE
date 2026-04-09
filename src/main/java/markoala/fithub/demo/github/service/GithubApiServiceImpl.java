@@ -1,9 +1,10 @@
 package markoala.fithub.demo.github.service;
 
-import lombok.extern.slf4j.Slf4j;
 import markoala.fithub.demo.github.dto.*;
 import markoala.fithub.demo.global.exception.GithubApiExecutionException;
 import org.kohsuke.github.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,8 +25,9 @@ import java.util.stream.Collectors;
  * <p><b>모니터링</b>: 모든 API 호출 전후에 Rate Limit 잔여 쿼타를 SLF4J 로그로 기록합니다.</p>
  */
 @Service
-@Slf4j
 public class GithubApiServiceImpl implements GithubApiService {
+
+    private static final Logger log = LoggerFactory.getLogger(GithubApiServiceImpl.class);
 
     @Value("${github.api.url:https://api.github.com}")
     private String githubApiUrl;
