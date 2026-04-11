@@ -2,8 +2,6 @@ package markoala.fithub.demo.application.service;
 
 import markoala.fithub.demo.application.client.PipelineClient;
 import markoala.fithub.demo.application.dto.request.PipelineStepCreateRequest;
-import markoala.fithub.demo.application.dto.request.PipelineStepUpdateRequest;
-import markoala.fithub.demo.application.dto.response.MultiPipelineResponse;
 import markoala.fithub.demo.application.dto.response.PipelineListResponse;
 import markoala.fithub.demo.application.dto.response.PipelineResponse;
 import markoala.fithub.demo.application.dto.response.PipelineStepResponse;
@@ -18,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -59,7 +56,7 @@ public class PipelineService {
         log.info("[Pipeline Service] Generating pipeline for project {} with category: {}", projectId, category);
 
         // FastAPI에 파이프라인 생성 요청
-        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category, null);
+        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category);
 
         log.info("[Pipeline Service] Pipeline generated with {} steps", pipelineResponse.steps().size());
 
@@ -81,56 +78,11 @@ public class PipelineService {
     }
 
     /**
-     * 프로젝트의 모든 직군(category) 별로 파이프라인을 일괄 생성 (API Composition)
-     * - 프로젝트에 등록된 레포 목록에서 category를 추출
-     * - 각 category 별로 FastAPI 파이프라인 생성 호출
-     * - 생성된 스텝들을 각 레포의 Spring Issue로 저장
-     */
-    public MultiPipelineResponse generatePipelinesForAllCategories(Long projectId, String requirements, byte[] pdfBytes) {
-        log.info("[Pipeline Service] Generating pipelines for all categories in project {}", projectId);
-
-        List<GithubRepository> repositories = repositoryRepository.findByProjectId(projectId);
-        if (repositories.isEmpty()) {
-            throw new IllegalArgumentException("No repositories found for project: " + projectId);
-        }
-
-        List<PipelineResponse> createdPipelines = new ArrayList<>();
-
-        for (GithubRepository repo : repositories) {
-            String category = repo.getCategory();
-            log.info("[Pipeline Service] Generating pipeline for category '{}' (repoId={})", category, repo.getId());
-
-            PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category, pdfBytes);
-
-            for (PipelineStepResponse step : pipelineResponse.steps()) {
-                Issue issue = Issue.createIssue(repo.getId(), null, step.title(), step.description(), "PENDING");
-                issue.setPipelineStepId(step.id().intValue());
-                issueRepository.save(issue);
-                log.info("[Pipeline Service] Issue saved for step {}: {} (repo={})",
-                        step.id(), step.title(), repo.getId());
-            }
-
-            createdPipelines.add(pipelineResponse);
-        }
-
-        log.info("[Pipeline Service] {} pipelines created for project {}", createdPipelines.size(), projectId);
-        return new MultiPipelineResponse(projectId, createdPipelines.size(), createdPipelines);
-    }
-
-    /**
-     * 프로젝트의 파이프라인 목록 조회 (전체)
+     * 프로젝트의 파이프라인 목록 조회
      */
     public PipelineListResponse getPipelinesByProject(Long projectId) {
-        log.info("[Pipeline Service] Fetching all pipelines for project {}", projectId);
+        log.info("[Pipeline Service] Fetching pipelines for project {}", projectId);
         return pipelineClient.getPipelinesByProject(projectId);
-    }
-
-    /**
-     * 프로젝트의 파이프라인 목록 조회 (category 필터)
-     */
-    public PipelineListResponse getPipelinesByProject(Long projectId, String category) {
-        log.info("[Pipeline Service] Fetching pipelines for project {} with category '{}'", projectId, category);
-        return pipelineClient.getPipelinesByProject(projectId, category);
     }
 
     /**
@@ -168,7 +120,7 @@ public class PipelineService {
      */
     public void completeStep(Long stepId) {
         log.info("[Pipeline Service] Completing pipeline step {}", stepId);
-        pipelineClient.updatePipelineStep(stepId, new PipelineStepUpdateRequest(true));
+        pipelineClient.updatePipelineStep(stepId, new markoala.fithub.demo.application.dto.request.PipelineStepUpdateRequest(true));
     }
 
     /**
