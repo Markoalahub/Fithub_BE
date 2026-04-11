@@ -17,7 +17,7 @@ public class Issue {
     @Column(name = "repository_id", nullable = false)
     private Long repositoryId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Integer githubIssueNumber;
 
     @Column(nullable = false)
