@@ -59,7 +59,7 @@ public class PipelineService {
         log.info("[Pipeline Service] Generating pipeline for project {} with category: {}", projectId, category);
 
         // FastAPI에 파이프라인 생성 요청
-        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category);
+        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category, null);
 
         log.info("[Pipeline Service] Pipeline generated with {} steps", pipelineResponse.steps().size());
 
@@ -86,7 +86,7 @@ public class PipelineService {
      * - 각 category 별로 FastAPI 파이프라인 생성 호출
      * - 생성된 스텝들을 각 레포의 Spring Issue로 저장
      */
-    public MultiPipelineResponse generatePipelinesForAllCategories(Long projectId, String requirements) {
+    public MultiPipelineResponse generatePipelinesForAllCategories(Long projectId, String requirements, byte[] pdfBytes) {
         log.info("[Pipeline Service] Generating pipelines for all categories in project {}", projectId);
 
         List<GithubRepository> repositories = repositoryRepository.findByProjectId(projectId);
@@ -100,7 +100,7 @@ public class PipelineService {
             String category = repo.getCategory();
             log.info("[Pipeline Service] Generating pipeline for category '{}' (repoId={})", category, repo.getId());
 
-            PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category);
+            PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category, pdfBytes);
 
             for (PipelineStepResponse step : pipelineResponse.steps()) {
                 Issue issue = Issue.createIssue(repo.getId(), null, step.title(), step.description(), "PENDING");
