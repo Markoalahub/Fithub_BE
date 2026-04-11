@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import markoala.fithub.demo.application.dto.response.MultiPipelineResponse;
 import markoala.fithub.demo.application.dto.response.PipelineListResponse;
 import markoala.fithub.demo.application.dto.response.PipelineResponse;
 import markoala.fithub.demo.application.dto.response.PipelineStepResponse;
@@ -29,7 +30,10 @@ public class PipelineController {
     }
 
     @GetMapping("/project/{projectId}")
-    @Operation(summary = "프로젝트 파이프라인 조회", description = "특정 프로젝트의 모든 파이프라인 목록을 조회합니다")
+    @Operation(
+            summary = "프로젝트 파이프라인 조회",
+            description = "특정 프로젝트의 파이프라인 목록을 조회합니다. category 파라미터로 직군별 필터링이 가능합니다 (예: FE, BE, AI)."
+    )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "파이프라인 목록 조회 성공",
                     content = @Content(schema = @Schema(implementation = PipelineListResponse.class))),
@@ -37,15 +41,21 @@ public class PipelineController {
     })
     public ResponseEntity<PipelineListResponse> getPipelinesByProject(
             @Parameter(description = "Spring Project ID", required = true)
-            @PathVariable Long projectId
+            @PathVariable Long projectId,
+            @Parameter(description = "직군 필터 (선택): FE, BE, AI 등. 미입력 시 전체 조회")
+            @RequestParam(required = false) String category
     ) {
-        PipelineListResponse response = pipelineService.getPipelinesByProject(projectId);
+        PipelineListResponse response = (category != null && !category.isBlank())
+                ? pipelineService.getPipelinesByProject(projectId, category)
+                : pipelineService.getPipelinesByProject(projectId);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/generate")
-    @Operation(summary = "파이프라인 생성 및 GitHub 동기화",
-            description = "요구사항 텍스트를 기반으로 AI 파이프라인을 생성하고, Issue들을 Spring DB에 저장합니다")
+    @Operation(
+            summary = "단일 카테고리 파이프라인 생성",
+            description = "요구사항 텍스트를 기반으로 특정 category(직군)의 AI 파이프라인을 생성하고, Issue들을 Spring DB에 저장합니다."
+    )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "파이프라인 생성 성공",
                     content = @Content(schema = @Schema(implementation = PipelineResponse.class))),
@@ -57,10 +67,36 @@ public class PipelineController {
             @RequestParam Long projectId,
             @Parameter(description = "개발 요구사항", required = true)
             @RequestParam String requirements,
-            @Parameter(description = "카테고리 (선택)", required = false)
+            @Parameter(description = "카테고리 (선택): FE, BE, AI 등")
             @RequestParam(required = false) String category
     ) {
         PipelineResponse response = pipelineService.generatePipeline(projectId, requirements, category);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/generate-all")
+    @Operation(
+            summary = "전체 직군 파이프라인 일괄 생성 (API Composition)",
+            description = """
+                    프로젝트에 등록된 모든 레포지토리의 category를 기반으로 직군별 파이프라인을 일괄 생성합니다.
+                    - 각 레포의 category(FE/BE/AI 등)로 FastAPI 파이프라인 생성 요청
+                    - 생성된 스텝들은 각 레포의 Spring Issue로 저장
+                    - 레포가 없는 경우 400 반환
+                    """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "전체 파이프라인 생성 성공",
+                    content = @Content(schema = @Schema(implementation = MultiPipelineResponse.class))),
+            @ApiResponse(responseCode = "400", description = "등록된 레포지토리가 없음"),
+            @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
+    })
+    public ResponseEntity<MultiPipelineResponse> generateAllCategoryPipelines(
+            @Parameter(description = "프로젝트 ID", required = true)
+            @RequestParam Long projectId,
+            @Parameter(description = "개발 요구사항 (전 직군 공통)", required = true)
+            @RequestParam String requirements
+    ) {
+        MultiPipelineResponse response = pipelineService.generatePipelinesForAllCategories(projectId, requirements);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

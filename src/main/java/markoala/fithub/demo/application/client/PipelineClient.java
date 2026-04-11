@@ -9,6 +9,9 @@ import markoala.fithub.demo.application.dto.response.PipelineStepResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 
 @Component
 public class PipelineClient {
@@ -30,8 +33,24 @@ public class PipelineClient {
     }
 
     public PipelineListResponse getPipelinesByProject(Long projectId) {
+        return getPipelinesByProject(projectId, null);
+    }
+
+    public PipelineListResponse getPipelinesByProject(Long projectId, String category) {
+        URI uri;
+        if (category != null && !category.isBlank()) {
+            uri = UriComponentsBuilder.fromPath("/pipelines/project/{projectId}")
+                    .queryParam("category", category)
+                    .buildAndExpand(projectId)
+                    .toUri();
+        } else {
+            uri = UriComponentsBuilder.fromPath("/pipelines/project/{projectId}")
+                    .buildAndExpand(projectId)
+                    .toUri();
+        }
+
         return restClient.get()
-                .uri("/pipelines/project/{projectId}", projectId)
+                .uri(uri)
                 .retrieve()
                 .body(PipelineListResponse.class);
     }
