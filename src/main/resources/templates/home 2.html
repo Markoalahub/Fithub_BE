@@ -1,0 +1,30 @@
+<!-- 내 레포지토리 목록 출력 -->
+<div th:if="${repos != null and !#lists.isEmpty(repos)}" style="margin-top: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+    <h2>📁 내 레포지토리 목록</h2>
+    <ul th:each="repo : ${repos}" class="repo-card" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+        <li>
+            <form th:action="@{'/repo/' + ${repo.name}}" method="post">
+                <button type="submit" style="all: unset; width: 100%; align-items: center; justify-content: center;">
+                    <div class="repo-header">
+                        <div class="repo-name" th:text="${repo.name}"></div>
+                        <span class="repo-visibility" th:text="${repo.private} ? '🔒 Private' : '🌐 Public'"></span>
+                    </div>
+                    <!-- 설명 -->
+                    <div class="repo-description" style="height: 50px; display: flex; align-items: center; justify-content: center;"
+                         th:utext="${repo.description}">
+                    </div>
+                    <!-- 메타 정보 -->
+                    <div class="repo-meta">
+                        🏷️ <span th:text="'언어: ' + ${repo.language != null ? repo.language : 'N/A'}"></span> &nbsp;|&nbsp;
+                        🐛 <span th:text="'이슈: ' + ${repo.openIssuesCount}"></span>
+                        <br/>
+                        📅 <span th:text="'생성일: ' + ${#strings.substring(repo.createdAt, 0, 10)}"></span> &nbsp;|&nbsp;
+                        ♻️ <span th:text="'최종 업데이트: ' + ${#strings.substring(repo.updatedAt, 0, 10)}"></span>
+
+                    </div>
+                </button>
+            </form>
+        </li>
+    </ul>
+</div>
+<!-- 내 레포지토리 목록 출력 -->
