@@ -6,8 +6,11 @@ import markoala.fithub.demo.application.dto.response.MeetingLogResponse;
 import markoala.fithub.demo.application.dto.response.MeetingStepRelationResponse;
 import markoala.fithub.demo.application.dto.response.MeetingSummarizeResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+
+import java.util.List;
 
 @Component
 public class MeetingClient {
@@ -24,6 +27,20 @@ public class MeetingClient {
                 .body(request)
                 .retrieve()
                 .body(MeetingLogResponse.class);
+    }
+
+    public MeetingLogResponse getMeetingLog(Long meetingId) {
+        return restClient.get()
+                .uri("/meetings/{meetingId}", meetingId)
+                .retrieve()
+                .body(MeetingLogResponse.class);
+    }
+
+    public List<MeetingLogResponse> getMeetingsByProject(Long projectId) {
+        return restClient.get()
+                .uri("/meetings/project/{projectId}", projectId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<MeetingLogResponse>>() {});
     }
 
     public MeetingSummarizeResponse summarizeMeeting(Long meetingId) {
