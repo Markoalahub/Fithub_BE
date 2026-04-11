@@ -37,6 +37,7 @@ public class SecurityConfig {
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
                                 .csrf(csrf -> csrf.disable())
+                                .headers(headers -> headers.frameOptions(frame -> frame.disable()))
                                 // OAuth2는 세션이 필요함. JWT와 세션을 혼용
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
@@ -44,11 +45,13 @@ public class SecurityConfig {
                                                 // 1. OAuth2 콜백 경로는 OAuth2 필터가 처리해야 하므로 명시적으로 허용
                                                 .requestMatchers("/login/oauth2/code/**").permitAll()
                                                 // 2. 공통 리소스, 로그인 페이지는 '무조건' 허용
-                                                .requestMatchers("/", "/login/**", "/signup/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                                                .requestMatchers("/", "/login/**", "/signup/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error", "/error/**")
                                                 .permitAll()
                                                 .requestMatchers(PathRequest.toStaticResources().atCommonLocations())
                                                 .permitAll()
-                                                // 3. 그 외 모든 경로는 인증 필요
+                                                // 3. API 전체 허용 (개발/테스트용)
+                                                .requestMatchers("/api/v1/**", "/h2-console/**").permitAll()
+                                                // 4. 그 외 모든 경로는 인증 필요
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth2 -> oauth2
                                                 .loginPage("/login")
