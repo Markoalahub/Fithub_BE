@@ -7,11 +7,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import markoala.fithub.demo.application.dto.request.ProjectCreateRequest;
+import markoala.fithub.demo.application.dto.request.ProjectMemberAddRequest;
+import markoala.fithub.demo.application.dto.request.ProjectMemberRoleUpdateRequest;
+import markoala.fithub.demo.application.dto.request.ProjectUpdateRequest;
 import markoala.fithub.demo.domain.project.entity.Project;
 import markoala.fithub.demo.domain.project.entity.ProjectMember;
 import markoala.fithub.demo.domain.project.repository.ProjectMemberRepository;
 import markoala.fithub.demo.domain.project.repository.ProjectRepository;
-import markoala.fithub.demo.domain.user.entity.User;
 import markoala.fithub.demo.domain.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,12 +67,9 @@ public class ProjectController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
     })
     public ResponseEntity<Project> createProject(
-            @Parameter(description = "프로젝트 이름", required = true)
-            @RequestParam String name,
-            @Parameter(description = "프로젝트 설명", required = false)
-            @RequestParam(required = false) String description
+            @Valid @RequestBody ProjectCreateRequest request
     ) {
-        Project project = Project.createProject(name, description);
+        Project project = Project.createProject(request.name(), request.description());
         Project saved = projectRepository.save(project);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
@@ -82,19 +83,16 @@ public class ProjectController {
     public ResponseEntity<Project> updateProject(
             @Parameter(description = "프로젝트 ID", required = true)
             @PathVariable Long projectId,
-            @Parameter(description = "새로운 프로젝트 이름", required = false)
-            @RequestParam(required = false) String name,
-            @Parameter(description = "새로운 프로젝트 설명", required = false)
-            @RequestParam(required = false) String description
+            @RequestBody ProjectUpdateRequest request
     ) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
 
-        if (name != null && !name.isEmpty()) {
-            project.updateName(name);
+        if (request.name() != null && !request.name().isEmpty()) {
+            project.updateName(request.name());
         }
-        if (description != null && !description.isEmpty()) {
-            project.updateDescription(description);
+        if (request.description() != null && !request.description().isEmpty()) {
+            project.updateDescription(request.description());
         }
 
         Project updated = projectRepository.save(project);
@@ -140,26 +138,20 @@ public class ProjectController {
     public ResponseEntity<ProjectMember> addMember(
             @Parameter(description = "프로젝트 ID", required = true)
             @PathVariable Long projectId,
-            @Parameter(description = "사용자 ID", required = true)
-            @RequestParam Long userId,
-            @Parameter(description = "멤버 역할 (PM, FE, BE, AI 등)", required = true)
-            @RequestParam String role
+            @Valid @RequestBody ProjectMemberAddRequest request
     ) {
-        // 프로젝트 존재 확인
         projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
 
-        // 사용자 존재 확인
-        userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        userRepository.findById(request.userId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + request.userId()));
 
-        // 이미 멤버인지 확인
-        boolean alreadyMember = projectMemberRepository.findByProjectIdAndUserId(projectId, userId).isPresent();
+        boolean alreadyMember = projectMemberRepository.findByProjectIdAndUserId(projectId, request.userId()).isPresent();
         if (alreadyMember) {
             throw new IllegalArgumentException("User is already a member of this project");
         }
 
-        ProjectMember member = ProjectMember.createMember(projectId, userId, role);
+        ProjectMember member = ProjectMember.createMember(projectId, request.userId(), request.role());
         ProjectMember saved = projectMemberRepository.save(member);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
@@ -175,8 +167,7 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Parameter(description = "멤버 ID", required = true)
             @PathVariable Long memberId,
-            @Parameter(description = "새로운 역할", required = true)
-            @RequestParam String role
+            @Valid @RequestBody ProjectMemberRoleUpdateRequest request
     ) {
         ProjectMember member = projectMemberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
@@ -185,7 +176,7 @@ public class ProjectController {
             throw new IllegalArgumentException("Member does not belong to this project");
         }
 
-        member.updateRole(role);
+        member.updateRole(request.role());
         ProjectMember updated = projectMemberRepository.save(member);
         return ResponseEntity.ok(updated);
     }
