@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import markoala.fithub.demo.application.dto.request.MeetingConfirmStepRequest;
+import markoala.fithub.demo.application.dto.request.MeetingCreateRequest;
 import markoala.fithub.demo.application.dto.response.MeetingLogResponse;
 import markoala.fithub.demo.application.dto.response.MeetingStepRelationResponse;
 import markoala.fithub.demo.application.dto.response.MeetingSummarizeResponse;
@@ -48,16 +49,10 @@ public class MeetingController {
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
     })
     public ResponseEntity<MeetingLogResponse> createMeeting(
-            @Parameter(description = "프로젝트 ID", required = true)
-            @RequestParam Long projectId,
-            @Parameter(description = "회의록 내용", required = true)
-            @RequestParam String content,
-            @Parameter(description = "제안하는 사람 (User ID)", required = true)
-            @RequestParam Long proposerId,
-            @Parameter(description = "제안 받는 사람 (User ID)", required = true)
-            @RequestParam Long recipientId
+            @Valid @RequestBody MeetingCreateRequest request
     ) {
-        MeetingLogResponse response = meetingService.createMeeting(projectId, content, proposerId, recipientId);
+        MeetingLogResponse response = meetingService.createMeeting(
+                request.projectId(), request.content(), request.proposerId(), request.recipientId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
