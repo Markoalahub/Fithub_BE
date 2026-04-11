@@ -1,7 +1,8 @@
 package markoala.fithub.demo.github.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import markoala.fithub.demo.auth.service.GithubWebClientService;
 import markoala.fithub.demo.github.dto.GithubRepositoryDto;
 import org.springframework.stereotype.Service;
@@ -10,8 +11,9 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class GithubRepositoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(GithubRepositoryService.class);
 
     private final GithubWebClientService githubWebClientService;
 
