@@ -1,324 +1,451 @@
-# 🚀 Fithub Spring Boot API 명세서
+# FitHub API Specification
 
-> **Version**: 1.0.0  
-> **Base URL**: `http://localhost:8080/api/v1`  
-> **Swagger UI**: `http://localhost:8080/swagger-ui.html`  
-> **OpenAPI JSON**: `http://localhost:8080/v3/api-docs`
+프론트엔드에서 필요한 REST API 명세입니다.
 
 ---
 
-## 📋 목차
-
-1. [인증 (Authentication)](#인증)
-2. [파이프라인 API](#파이프라인-api)
-3. [Issue API](#issue-api)
-4. [프로젝트 API](#프로젝트-api)
-5. [에러 응답](#에러-응답)
-
----
-
-## 🔐 인증
-
-### 인증 방식
-
-**GitHub OAuth 2.0**
+## 📌 Base URL
 
 ```
-Authorization: Bearer <GitHub_Access_Token>
-또는
-?accessToken=<GitHub_Access_Token>
+http://localhost:8080/api/v1
 ```
 
 ---
 
-## 📊 파이프라인 API
+## 🔐 Authentication
 
-### 1. 프로젝트 파이프라인 조회
+모든 요청에 JWT 토큰 필요:
+
+```
+Authorization: Bearer <JWT_TOKEN>
+```
+
+---
+
+## 1. GitHub Repository 관리 API
+
+### 1-1. 사용 가능한 GitHub 레포 조회
+
+**사용 시나리오**: 프로젝트 생성 후, 사용자의 GitHub 레포 목록 표시
 
 ```http
-GET /pipelines/project/{projectId}
+GET /projects/{projectId}/repositories/github-available
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `projectId` (path, required): Spring Project ID
+**Query Parameters**: 없음
 
-**Response (200 OK):**
+**응명 설명**
+- JWT 토큰의 사용자가 GitHub에서 소유/접근 가능한 레포 목록 조회
+- 저장된 GitHub Access Token을 사용하여 실시간 조회
+- 이미 프로젝트에 등록된 레포도 포함됨
+
+**Response (200 OK)**
 ```json
 {
-  "pipelines": [
+  "repositories": [
     {
-      "id": 1,
-      "project_id": 1,
-      "category": "기능 개발",
-      "version": 2,
-      "is_active": true,
-      "steps": [
-        {
-          "id": 1,
-          "pipeline_id": 1,
-          "title": "회원가입 기능 개발",
-          "description": "소셜 로그인 연동",
-          "is_completed": false,
-          "origin": "ai_generated"
-        }
-      ]
+      "id": 1207474638,
+      "name": "travel-plan",
+      "fullName": "KYH-99/travel-plan",
+      "description": "Travel planning app",
+      "htmlUrl": "https://github.com/KYH-99/travel-plan",
+      "isPrivate": false,
+      "language": "Python",
+      "stargazersCount": 1,
+      "openIssuesCount": 1,
+      "createdAt": "2023-01-15T10:00:00Z",
+      "updatedAt": "2026-04-12T15:30:00Z"
+    },
+    {
+      "id": 1206745673,
+      "name": "ai-model",
+      "fullName": "KYH-99/ai-model",
+      "description": "Machine learning models",
+      "htmlUrl": "https://github.com/KYH-99/ai-model",
+      "isPrivate": false,
+      "language": "Python",
+      "stargazersCount": 5,
+      "openIssuesCount": 3,
+      "createdAt": "2023-06-20T08:00:00Z",
+      "updatedAt": "2026-04-10T12:00:00Z"
     }
   ],
-  "total": 1
+  "total": 2
 }
 ```
 
-**Error Responses:**
-- `404`: 프로젝트를 찾을 수 없음
-- `503`: FastAPI 서버 연결 실패
+**Response 필드 상세**
+| 필드 | 타입 | 설명 |
+|-----|------|------|
+| repositories | Array | 저장소 정보 배열 |
+| ├─ id | Long | GitHub 저장소 ID |
+| ├─ name | String | 저장소 이름 |
+| ├─ fullName | String | 저장소 전체명 (owner/repo) |
+| ├─ description | String | 저장소 설명 |
+| ├─ htmlUrl | String | GitHub 저장소 URL |
+| ├─ isPrivate | Boolean | 프라이빗 여부 |
+| ├─ language | String | 주 사용 언어 |
+| ├─ stargazersCount | Integer | 스타 개수 |
+| ├─ openIssuesCount | Integer | 열린 이슈 개수 |
+| ├─ createdAt | String | GitHub 저장소 생성 시각 |
+| ├─ updatedAt | String | GitHub 저장소 수정 시각 |
+| total | Integer | 전체 저장소 개수 |
 
 ---
 
-### 2. AI 파이프라인 생성
+### 1-2. GitHub 레포 동기화 (프로젝트에 등록)
+
+**사용 시나리오**: 사용자가 레포를 선택 → 직군(category) 지정 후 등록
 
 ```http
-POST /pipelines/generate
+POST /projects/{projectId}/repositories/sync-from-github
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `projectId` (query, required): 프로젝트 ID
-- `requirements` (query, required): 개발 요구사항 텍스트
-- `category` (query, optional): 카테고리 (예: "기능개발", "버그수정")
-
-**Request Example:**
-```bash
-POST /api/v1/pipelines/generate?projectId=1&requirements=회원가입%20기능%20구현&category=기능개발
-```
-
-**Response (201 Created):**
+**Request Body**
 ```json
 {
-  "id": 1,
-  "project_id": 1,
-  "category": "기능개발",
-  "version": 1,
-  "is_active": true,
-  "steps": [
+  "githubRepoIds": [1207474638, 1206745673],
+  "categoryMappings": [
     {
-      "id": 1,
-      "pipeline_id": 1,
-      "title": "데이터베이스 스키마 설계",
-      "description": "사용자 테이블 생성",
-      "is_completed": false,
-      "origin": "ai_generated"
+      "githubRepoId": 1207474638,
+      "repoName": "travel-plan",
+      "category": "BE"
     },
     {
-      "id": 2,
-      "pipeline_id": 1,
-      "title": "API 엔드포인트 구현",
-      "description": "회원가입 API 개발",
-      "is_completed": false,
-      "origin": "ai_generated"
+      "githubRepoId": 1206745673,
+      "repoName": "ai-model",
+      "category": "AI"
     }
   ]
 }
 ```
 
-**Error Responses:**
-- `400`: 잘못된 요청 데이터
-- `503`: FastAPI 서버 연결 실패
+**Request Body 상세**
+| 필드 | 타입 | 필수 | 설명 |
+|-----|------|------|------|
+| githubRepoIds | Array[Long] | O | GitHub 저장소 ID 목록 |
+| categoryMappings | Array | O | 저장소별 직군 분류 정보 |
+| ├─ githubRepoId | Long | O | GitHub 저장소 ID |
+| ├─ repoName | String | O | 저장소명 |
+| ├─ category | String | O | 직군 분류 (FE/BE/AI/DEVOPS/QA) |
+
+**응답 설명**
+- 각 저장소별로 GithubRepository 엔티티 생성
+- 추후 파이프라인 생성 시 category를 기준으로 직군별 파이프라인 자동 생성
+
+**Response (201 Created)**
+```json
+[
+  {
+    "id": 1,
+    "projectId": 1,
+    "repoUrl": "https://github.com/KYH-99/travel-plan",
+    "repoType": "GITHUB",
+    "category": "BE",
+    "createdAt": "2026-04-12T10:00:00Z",
+    "updatedAt": "2026-04-12T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "projectId": 1,
+    "repoUrl": "https://github.com/KYH-99/ai-model",
+    "repoType": "GITHUB",
+    "category": "AI",
+    "createdAt": "2026-04-12T10:00:00Z",
+    "updatedAt": "2026-04-12T10:00:00Z"
+  }
+]
+```
+
+**Response 필드 상세**
+| 필드 | 타입 | 설명 |
+|-----|------|------|
+| id | Long | 저장소 등록 ID |
+| projectId | Long | 프로젝트 ID |
+| repoUrl | String | GitHub 저장소 URL |
+| repoType | String | 저장소 타입 (GITHUB) |
+| category | String | 직군 분류 |
+| createdAt | String | 등록 시각 |
+| updatedAt | String | 수정 시각 |
 
 ---
 
-### 3. 파이프라인에 스텝 추가
+### 1-3. 프로젝트의 등록된 레포 목록 조회
+
+**사용 시나리오**: 파이프라인 생성 시, 어떤 레포들이 등록되어 있는지 확인
 
 ```http
-POST /pipelines/{pipelineId}/steps
+GET /projects/{projectId}/repositories
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `pipelineId` (path, required): 파이프라인 ID
-- `title` (query, required): 스텝 제목
-- `description` (query, required): 스텝 설명
+**Query Parameters**: 없음
 
-**Response (201 Created):**
+**응답 설명**
+- 프로젝트에 등록된 모든 GitHub 저장소 목록 반환
+- 각 저장소의 직군(category) 분류 정보 포함
+
+**Response (200 OK)**
+```json
+[
+  {
+    "id": 1,
+    "projectId": 1,
+    "repoUrl": "https://github.com/KYH-99/travel-plan",
+    "repoType": "GITHUB",
+    "category": "BE",
+    "createdAt": "2026-04-12T10:00:00Z",
+    "updatedAt": "2026-04-12T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "projectId": 1,
+    "repoUrl": "https://github.com/KYH-99/frontend",
+    "repoType": "GITHUB",
+    "category": "FE",
+    "createdAt": "2026-04-12T10:05:00Z",
+    "updatedAt": "2026-04-12T10:05:00Z"
+  }
+]
+```
+
+---
+
+## 2. Pipeline 생성 및 관리 API
+
+### 2-1. 모든 카테고리 파이프라인 일괄 생성 (PDF 지원)
+
+**사용 시나리오**: 레포 등록 후, 전체 파이프라인을 한 번에 생성
+
+```http
+POST /pipelines/generate-all
+Content-Type: multipart/form-data
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Request Body** (multipart/form-data)
+```
+- request: JSON 형식의 요청 데이터
+  {
+    "projectId": 1
+  }
+- prdFile: (선택) PDF 파일
+```
+
+**Request Body 상세**
+| 필드 | 타입 | 필수 | 설명 |
+|-----|------|------|------|
+| projectId | Long | O | 프로젝트 ID |
+| prdFile | File | X | PRD PDF 파일 (없으면 AI가 기본 파이프라인 생성) |
+
+**Response (201 Created)**
 ```json
 {
-  "id": 3,
-  "pipeline_id": 1,
-  "title": "UI 컴포넌트 구현",
-  "description": "회원가입 폼 개발",
-  "is_completed": false,
-  "origin": "user_created"
+  "projectId": 1,
+  "count": 2,
+  "pipelines": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "category": "BE",
+      "version": 1,
+      "isActive": true,
+      "steps": [
+        {
+          "id": 1,
+          "pipelineId": 1,
+          "title": "API 설계",
+          "description": "REST API 설계",
+          "isCompleted": false,
+          "origin": "ai_generated"
+        }
+      ]
+    }
+  ]
 }
 ```
 
 ---
 
-### 4. 파이프라인 스텝 완료 처리
+### 2-2. 파이프라인을 GitHub Issues로 동기화
 
-```http
-PATCH /pipelines/steps/{stepId}/complete
-```
-
-**Parameters:**
-- `stepId` (path, required): 파이프라인 스텝 ID
-
-**Response (200 OK):**
-```
-(Empty Body)
-```
-
----
-
-### 5. 파이프라인을 GitHub Issues로 동기화
+**사용 시나리오**: 생성된 파이프라인의 모든 스텝을 GitHub Issues로 한 번에 동기화
 
 ```http
 POST /pipelines/{pipelineId}/sync-to-github
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `pipelineId` (path, required): 파이프라인 ID
-- `repositoryId` (query, required): Spring Repository ID
-- `accessToken` (query, required): GitHub Access Token
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "issue_id": 101,
-    "github_issue_number": 42,
-    "repository_id": 1,
-    "status": "SYNCED",
-    "github_url": "https://github.com/owner/repo/issues/42",
-    "error_message": null,
-    "created_at": "2026-04-10T00:05:00Z",
-    "updated_at": "2026-04-10T00:05:00Z"
-  }
-]
-```
-
-**Error Responses:**
-- `400`: GitHub 동기화 실패
-- `401`: GitHub 인증 실패
-- `404`: 파이프라인 또는 저장소를 찾을 수 없음
-
----
-
-## 🔴 Issue API
-
-### 1. Issue 상세 조회
-
-```http
-GET /issues/{issueId}
-```
-
-**Response (200 OK):**
+**Request Body**
 ```json
 {
-  "id": 101,
-  "repository_id": 1,
-  "github_issue_number": 42,
-  "title": "회원가입 기능 구현",
-  "description": "소셜 로그인 연동",
-  "status": "OPEN",
-  "pipeline_step_id": 1,
-  "created_at": "2026-04-10T00:00:00Z",
-  "updated_at": "2026-04-10T00:05:00Z"
+  "repositoryId": 1,
+  "accessToken": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+**Request Body 상세**
+| 필드 | 타입 | 필수 | 설명 |
+|-----|------|------|------|
+| repositoryId | Long | O | GitHub 저장소 ID |
+| accessToken | String | O | GitHub Personal Access Token (리포지토리 쓰기 권한 필요) |
+
+**Response (200 OK)**
+```json
+{
+  "pipelineId": 1,
+  "repositoryId": 1,
+  "syncedSteps": 5,
+  "totalSteps": 5,
+  "status": "SUCCESS",
+  "message": "Pipeline synced to GitHub successfully"
 }
 ```
 
 ---
 
-### 2. 저장소별 Issue 목록 조회
+### 2-3. Pipeline Step 수정
+
+**사용 시나리오**: 개발자/기획자가 AI 생성 스텝을 수정
 
 ```http
-GET /issues/repository/{repositoryId}
+PUT /pipelines/steps/{stepId}
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Response (200 OK):**
+**Request Body** (모든 필드 선택 사항)
 ```json
-[
-  {
-    "id": 101,
-    "repository_id": 1,
-    "github_issue_number": 42,
-    "title": "회원가입 기능 구현",
-    "description": "소셜 로그인 연동",
-    "status": "OPEN",
-    "pipeline_step_id": 1,
-    "created_at": "2026-04-10T00:00:00Z",
-    "updated_at": "2026-04-10T00:05:00Z"
-  }
-]
+{
+  "title": "REST API 및 GraphQL 설계",
+  "description": "API 설계 및 문서화",
+  "isCompleted": false
+}
 ```
 
----
+**Request Body 상세**
+| 필드 | 타입 | 필수 | 설명 |
+|-----|------|------|------|
+| title | String | X | 스텝 제목 (최대 255자) |
+| description | String | X | 스텝 상세 설명 |
+| isCompleted | Boolean | X | 완료 여부 |
 
-### 3. Issue 동기화 상태 조회
+**응답 설명**
+- 제공되지 않은 필드는 기존 값 유지
+- 최대 3개 필드까지 부분 수정 가능
 
-```http
-GET /issues/sync/{issueId}
-```
-
-**Response (200 OK):**
+**Response (200 OK)**
 ```json
 {
   "id": 1,
-  "issue_id": 101,
-  "github_issue_number": 42,
-  "repository_id": 1,
-  "status": "SYNCED",
-  "github_url": "https://github.com/owner/repo/issues/42",
-  "error_message": null,
-  "created_at": "2026-04-10T00:05:00Z",
-  "updated_at": "2026-04-10T00:05:00Z"
+  "pipelineId": 1,
+  "title": "REST API 및 GraphQL 설계",
+  "description": "API 설계 및 문서화",
+  "isCompleted": false,
+  "version": 1,
+  "origin": "ai_generated",
+  "createdAt": "2026-04-12T10:00:00Z",
+  "updatedAt": "2026-04-12T10:15:00Z"
 }
 ```
 
 ---
 
-### 4. 상태별 Issue 조회
+## 3. Issue 생성 및 GitHub 동기화 API
+
+### 3-1. Pipeline Step에서 Issue 생성
+
+**사용 시나리오**: 파이프라인 스텝을 실제 작업 Issue로 변환 (GitHub 동기화 전 로컬 Issue)
 
 ```http
-GET /issues/sync/repository/{repositoryId}/status/{status}
+POST /pipelines/steps/{pipelineStepId}/create-issue
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `repositoryId` (path, required): 저장소 ID
-- `status` (path, required): 동기화 상태 (`PENDING`, `SYNCED`, `FAILED`, `CLOSED`)
-
-**Response (200 OK):**
+**Request Body**
 ```json
-[
-  {
-    "id": 1,
-    "issue_id": 101,
-    "github_issue_number": 42,
-    "repository_id": 1,
-    "status": "SYNCED",
-    "github_url": "https://github.com/owner/repo/issues/42",
-    "error_message": null,
-    "created_at": "2026-04-10T00:05:00Z",
-    "updated_at": "2026-04-10T00:05:00Z"
-  }
-]
+{
+  "repositoryId": 1,
+  "title": "API 설계",
+  "description": "REST API 설계 및 문서화"
+}
 ```
+
+**Request Body 상세**
+| 필드 | 타입 | 필수 | 설명 |
+|-----|------|------|------|
+| repositoryId | Long | O | GitHub 저장소 ID |
+| title | String | O | Issue 제목 |
+| description | String | O | Issue 상세 설명 |
+
+**응답 설명**
+- Issue를 로컬 DB에만 생성 (GitHub에는 아직 동기화 안 함)
+- 상태는 PENDING으로 생성
+- 나중에 sync 엔드포인트를 통해 GitHub에 동기화
+
+**Response (201 Created)**
+```json
+{
+  "id": 1,
+  "repositoryId": 1,
+  "githubIssueNumber": null,
+  "title": "API 설계",
+  "description": "REST API 설계 및 문서화",
+  "status": "PENDING",
+  "pipelineStepId": 1,
+  "createdAt": "2026-04-12T10:00:00Z",
+  "updatedAt": "2026-04-12T10:00:00Z"
+}
+```
+
+**Response 필드 상세**
+| 필드 | 타입 | 설명 |
+|-----|------|------|
+| id | Long | Issue ID |
+| repositoryId | Long | 저장소 ID |
+| githubIssueNumber | Integer | GitHub Issue 번호 (동기화 후 설정) |
+| title | String | Issue 제목 |
+| description | String | Issue 상세 설명 |
+| status | String | 상태 (PENDING, SYNCED, FAILED 등) |
+| pipelineStepId | Long | 연결된 파이프라인 스텝 ID |
+| createdAt | String | 생성 시각 |
+| updatedAt | String | 수정 시각 |
 
 ---
 
-### 5. Issue 상태 업데이트
+### 3-2. Issue 상태 업데이트 및 GitHub 반영
+
+**사용 시나리오**: Issue의 상태를 변경하고 GitHub에 반영 (OPEN → CLOSED)
 
 ```http
 PATCH /issues/{issueId}/status
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `issueId` (path, required): Issue ID
-- `status` (query, required): 새로운 상태 (`OPEN`, `CLOSED`)
-- `repoUrl` (query, required): GitHub 저장소 URL (예: `https://github.com/owner/repo`)
-- `accessToken` (query, required): GitHub Access Token
-
-**Response (200 OK):**
+**Request Body**
 ```json
 {
-  "issueId": "101",
+  "status": "CLOSED",
+  "repoUrl": "https://github.com/KYH-99/travel-plan"
+}
+```
+
+**Request Body 상세**
+| 필드 | 타입 | 필수 | 설명 |
+|-----|------|------|------|
+| status | String | O | 변경할 상태 (OPEN, CLOSED) |
+| repoUrl | String | O | GitHub 저장소 URL |
+
+**Response (200 OK)**
+```json
+{
+  "issueId": "1",
   "status": "CLOSED",
   "message": "Issue status updated successfully"
 }
@@ -326,301 +453,170 @@ PATCH /issues/{issueId}/status
 
 ---
 
-### 6. Issue를 GitHub로 동기화
+### 3-3. 저장소별 Issue 목록 조회
+
+**사용 시나리오**: 특정 레포의 모든 Issue 확인
 
 ```http
-POST /issues/{issueId}/sync
+GET /issues/repository/{repositoryId}
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `issueId` (path, required): Issue ID
-- `repoUrl` (query, required): GitHub 저장소 URL
-- `accessToken` (query, required): GitHub Access Token
+**Query Parameters**: 없음
 
-**Response (201 Created):**
-```json
-{
-  "id": 1,
-  "issue_id": 101,
-  "github_issue_number": 42,
-  "repository_id": 1,
-  "status": "SYNCED",
-  "github_url": "https://github.com/owner/repo/issues/42",
-  "error_message": null,
-  "created_at": "2026-04-10T00:05:00Z",
-  "updated_at": "2026-04-10T00:05:00Z"
-}
-```
+**응답 설명**
+- 해당 저장소에 등록된 모든 Issue 목록 반환 (GitHub 동기화 여부 무관)
+- 각 Issue의 상태(status)를 통해 동기화 여부 확인 가능
 
----
-
-## 📁 프로젝트 API
-
-### 1. 프로젝트 조회
-
-```http
-GET /projects/{projectId}
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "name": "Fithub",
-  "description": "AI 기반 협업 허브",
-  "created_at": "2026-04-01T10:00:00Z",
-  "updated_at": "2026-04-10T00:00:00Z"
-}
-```
-
----
-
-### 2. 프로젝트 생성
-
-```http
-POST /projects
-```
-
-**Parameters:**
-- `name` (query, required): 프로젝트 이름
-- `description` (query, optional): 프로젝트 설명
-
-**Response (201 Created):**
-```json
-{
-  "id": 1,
-  "name": "Fithub",
-  "description": "AI 기반 협업 허브",
-  "created_at": "2026-04-10T00:05:00Z",
-  "updated_at": "2026-04-10T00:05:00Z"
-}
-```
-
----
-
-### 3. 프로젝트 정보 수정
-
-```http
-PATCH /projects/{projectId}
-```
-
-**Parameters:**
-- `projectId` (path, required): 프로젝트 ID
-- `name` (query, optional): 새로운 프로젝트 이름
-- `description` (query, optional): 새로운 프로젝트 설명
-
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "name": "Fithub v2",
-  "description": "AI 기반 협업 허브 - 개선 버전",
-  "created_at": "2026-04-01T10:00:00Z",
-  "updated_at": "2026-04-10T00:06:00Z"
-}
-```
-
----
-
-### 4. 프로젝트 삭제
-
-```http
-DELETE /projects/{projectId}
-```
-
-**Response (204 No Content):**
-```
-(Empty Body)
-```
-
----
-
-### 5. 프로젝트 멤버 목록 조회
-
-```http
-GET /projects/{projectId}/members
-```
-
-**Response (200 OK):**
+**Response (200 OK)**
 ```json
 [
   {
     "id": 1,
-    "project_id": 1,
-    "user_id": 10,
-    "role": "PM",
-    "joined_at": "2026-04-01T10:00:00Z",
-    "updated_at": "2026-04-10T00:00:00Z"
+    "repositoryId": 1,
+    "githubIssueNumber": null,
+    "title": "API 설계",
+    "description": "REST API 설계 및 문서화",
+    "status": "PENDING",
+    "pipelineStepId": 1,
+    "createdAt": "2026-04-12T10:00:00Z",
+    "updatedAt": "2026-04-12T10:00:00Z"
   },
   {
     "id": 2,
-    "project_id": 1,
-    "user_id": 11,
-    "role": "BE",
-    "joined_at": "2026-04-02T10:00:00Z",
-    "updated_at": "2026-04-10T00:00:00Z"
+    "repositoryId": 1,
+    "githubIssueNumber": 42,
+    "title": "데이터베이스 설계",
+    "description": "MySQL 스키마 설계",
+    "status": "SYNCED",
+    "pipelineStepId": 2,
+    "createdAt": "2026-04-12T10:05:00Z",
+    "updatedAt": "2026-04-12T10:15:00Z"
   }
 ]
 ```
 
+**Response 필드 상세**
+| 필드 | 타입 | 설명 |
+|-----|------|------|
+| id | Long | Issue ID |
+| repositoryId | Long | 저장소 ID |
+| githubIssueNumber | Integer | GitHub Issue 번호 (동기화 전: null) |
+| title | String | Issue 제목 |
+| description | String | Issue 상세 설명 |
+| status | String | 상태 (PENDING, SYNCED, FAILED 등) |
+| pipelineStepId | Long | 연결된 파이프라인 스텝 ID |
+| createdAt | String | 생성 시각 |
+| updatedAt | String | 수정 시각 |
+
 ---
 
-### 6. 프로젝트에 멤버 추가
+### 3-4. Issue를 GitHub로 동기화
+
+**사용 시나리오**: Spring Issue를 실제 GitHub Issue로 생성
 
 ```http
-POST /projects/{projectId}/members
+POST /issues/{issueId}/sync
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Parameters:**
-- `projectId` (path, required): 프로젝트 ID
-- `userId` (query, required): 사용자 ID
-- `role` (query, required): 멤버 역할 (예: `PM`, `FE`, `BE`, `AI`)
-
-**Response (201 Created):**
+**Request Body**
 ```json
 {
-  "id": 3,
-  "project_id": 1,
-  "user_id": 12,
-  "role": "FE",
-  "joined_at": "2026-04-10T00:07:00Z",
-  "updated_at": "2026-04-10T00:07:00Z"
+  "repoUrl": "https://github.com/KYH-99/travel-plan"
 }
 ```
 
----
+**Request Body 상세**
+| 필드 | 타입 | 필수 | 설명 |
+|-----|------|------|------|
+| repoUrl | String | O | GitHub 저장소 URL (e.g., https://github.com/owner/repo) |
 
-### 7. 멤버 역할 수정
+**응답 설명**
+- GitHub에 Issue 생성 후 이슈 번호(number)를 받음
+- IssueSync 레코드를 생성하여 동기화 상태 추적
+- JWT 토큰에서 사용자 정보 추출 후 저장된 GitHub Access Token 사용
 
-```http
-PATCH /projects/{projectId}/members/{memberId}/role
-```
-
-**Parameters:**
-- `projectId` (path, required): 프로젝트 ID
-- `memberId` (path, required): 멤버 ID
-- `role` (query, required): 새로운 역할
-
-**Response (200 OK):**
-```json
-{
-  "id": 3,
-  "project_id": 1,
-  "user_id": 12,
-  "role": "BE",
-  "joined_at": "2026-04-10T00:07:00Z",
-  "updated_at": "2026-04-10T00:08:00Z"
-}
-```
-
----
-
-### 8. 멤버 삭제
-
-```http
-DELETE /projects/{projectId}/members/{memberId}
-```
-
-**Response (204 No Content):**
-```
-(Empty Body)
-```
-
----
-
-### 9. 특정 사용자의 프로젝트 멤버 조회
-
-```http
-GET /projects/{projectId}/members/{userId}
-```
-
-**Response (200 OK):**
+**Response (201 Created)**
 ```json
 {
   "id": 1,
-  "project_id": 1,
-  "user_id": 10,
-  "role": "PM",
-  "joined_at": "2026-04-01T10:00:00Z",
-  "updated_at": "2026-04-10T00:00:00Z"
+  "issueId": 1,
+  "repositoryId": 1,
+  "githubIssueNumber": 42,
+  "status": "SYNCED",
+  "githubUrl": "https://github.com/KYH-99/travel-plan/issues/42",
+  "createdAt": "2026-04-12T10:00:00Z",
+  "updatedAt": "2026-04-12T10:10:00Z"
 }
+```
+
+**Response 필드 상세**
+| 필드 | 타입 | 설명 |
+|-----|------|------|
+| id | Long | IssueSync 레코드 ID |
+| issueId | Long | Spring Issue ID |
+| repositoryId | Long | 저장소 ID |
+| githubIssueNumber | Integer | GitHub에서 자동 할당된 Issue 번호 |
+| status | String | 동기화 상태 (PENDING, SYNCED, FAILED, CLOSED) |
+| githubUrl | String | GitHub Issue 페이지 URL |
+| createdAt | String | 동기화 생성 시각 (ISO 8601) |
+| updatedAt | String | 동기화 업데이트 시각 (ISO 8601) |
+
+---
+
+## 4. Frontend Workflow
+
+### Step 1: GitHub 레포 등록
+```
+GET /projects/{projectId}/repositories/github-available
+  ↓ (사용자가 레포 선택 + 카테고리 지정)
+POST /projects/{projectId}/repositories/sync-from-github
+```
+
+### Step 2: 파이프라인 생성
+```
+POST /pipelines/generate-all
+```
+
+### Step 3: Pipeline Step 수정 (선택)
+```
+PUT /pipelines/steps/{stepId}
+```
+
+### Step 4: Issue 생성
+```
+POST /pipelines/steps/{pipelineStepId}/create-issue
+```
+
+### Step 5: GitHub 동기화
+```
+POST /issues/{issueId}/sync
+Content-Type: application/json
+Request Body: { "repoUrl": "..." }
 ```
 
 ---
 
-## ⚠️ 에러 응답
+## 5. Error Responses
 
-### 400 Bad Request
 ```json
 {
-  "timestamp": "2026-04-10T00:05:00Z",
+  "timestamp": "2026-04-12T10:00:00Z",
   "status": 400,
   "error": "Bad Request",
-  "message": "Invalid request parameters"
+  "message": "Invalid request data"
 }
 ```
 
-### 404 Not Found
-```json
-{
-  "timestamp": "2026-04-10T00:05:00Z",
-  "status": 404,
-  "error": "Not Found",
-  "message": "Project not found: 999"
-}
-```
+### HTTP Status Codes
 
-### 409 Conflict
-```json
-{
-  "timestamp": "2026-04-10T00:05:00Z",
-  "status": 409,
-  "error": "Conflict",
-  "message": "User is already a member of this project"
-}
-```
-
-### 503 Service Unavailable
-```json
-{
-  "timestamp": "2026-04-10T00:05:00Z",
-  "status": 503,
-  "error": "Service Unavailable",
-  "message": "FastAPI server connection failed"
-}
-```
-
----
-
-## 📌 참고사항
-
-### 헤더 설정
-
-모든 요청에 다음 헤더를 포함하세요:
-
-```http
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer <GitHub_Access_Token>
-```
-
-### Rate Limiting
-
-- **GitHub API**: 5,000 requests/hour per token
-- **FastAPI**: 분당 1000 요청 제한
-
-### CORS 설정
-
-프론트엔드에서 호출 시 CORS 설정:
-
-```javascript
-fetch('http://localhost:8080/api/v1/projects/1', {
-  headers: {
-    'Authorization': `Bearer ${githubToken}`
-  }
-})
-```
-
----
-
-**Last Updated**: 2026-04-10
+| Status | 의미 |
+|--------|------|
+| 200 | 성공 |
+| 201 | 생성 성공 |
+| 400 | 잘못된 요청 |
+| 401 | 인증 실패 |
+| 404 | 리소스 찾을 수 없음 |
+| 503 | 서버 연결 실패 |
