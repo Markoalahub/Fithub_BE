@@ -129,10 +129,16 @@ public class PipelineController {
     public ResponseEntity<Issue> createIssueFromStep(
             @Parameter(description = "FastAPI Pipeline Step ID", required = true)
             @PathVariable Long pipelineStepId,
-            @Valid @RequestBody CreateIssueFromStepRequest request
+            @Valid @RequestBody CreateIssueFromStepRequest request,
+            @RequestHeader(name = "Authorization") String authHeader
     ) {
-        Issue issue = pipelineService.createIssueFromPipelineStep(
-                pipelineStepId, request.repositoryId(), request.title(), request.description());
+        Issue issue = pipelineService.createIssueFromPipelineStepAndSync(
+                pipelineStepId,
+                request.repositoryId(),
+                request.title(),
+                request.description(),
+                request.repoUrl(),
+                authHeader);
         return ResponseEntity.status(HttpStatus.CREATED).body(issue);
     }
 

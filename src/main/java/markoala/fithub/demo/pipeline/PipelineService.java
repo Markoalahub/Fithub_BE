@@ -1,5 +1,6 @@
 package markoala.fithub.demo.pipeline;
 
+import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import markoala.fithub.demo.issue.GithubRepository;
 import markoala.fithub.demo.issue.Issue;
 import markoala.fithub.demo.issue.IssueRepository;
@@ -13,6 +14,8 @@ import markoala.fithub.demo.pipeline.dto.PipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineStepCreateRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineStepResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineStepUpdateRequest;
+import markoala.fithub.demo.user.User;
+import markoala.fithub.demo.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -32,19 +35,25 @@ public class PipelineService {
     private final IssueRepository issueRepository;
     private final IssueSyncRepository issueSyncRepository;
     private final RepositoryRepository repositoryRepository;
+    private final JwtProvider jwtProvider;
+    private final UserService userService;
 
     public PipelineService(
             PipelineClient pipelineClient,
             GitHubIssueService gitHubIssueService,
             IssueRepository issueRepository,
             IssueSyncRepository issueSyncRepository,
-            RepositoryRepository repositoryRepository
+            RepositoryRepository repositoryRepository,
+            JwtProvider jwtProvider,
+            UserService userService
     ) {
         this.pipelineClient = pipelineClient;
         this.gitHubIssueService = gitHubIssueService;
         this.issueRepository = issueRepository;
         this.issueSyncRepository = issueSyncRepository;
         this.repositoryRepository = repositoryRepository;
+        this.jwtProvider = jwtProvider;
+        this.userService = userService;
     }
 
     /**
@@ -99,6 +108,35 @@ public class PipelineService {
         Issue issue = Issue.createIssue(repositoryId, null, title, description, "PENDING");
         issue.setPipelineStepId(pipelineStepId.intValue());
         return issueRepository.save(issue);
+    }
+
+    /**
+     * 파이프라인 스텝을 Issue로 변환 + GitHub 동기화
+     */
+    public Issue createIssueFromPipelineStepAndSync(Long pipelineStepId, Long repositoryId, String title, String description, String repoUrl, String authHeader) {
+        log.info("[Pipeline Service] Creating issue and syncing to GitHub: {}", title);
+
+        // 1. Issue 생성 (DB)
+        Issue issue = Issue.createIssue(repositoryId, null, title, description, "PENDING");
+        issue.setPipelineStepId(pipelineStepId.intValue());
+        Issue savedIssue = issueRepository.save(issue);
+
+        // 2. GitHub에 동기화
+        try {
+            String token = authHeader.substring(7); // "Bearer " 제거
+            Long userId = jwtProvider.getUserIdFromToken(token);
+            User user = userService.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+            String githubAccessToken = user.getGithubAccessToken();
+
+            gitHubIssueService.syncIssueToGithub(savedIssue, repoUrl, githubAccessToken);
+            log.info("[Pipeline Service] Issue {} synced to GitHub", savedIssue.getId());
+        } catch (Exception e) {
+            log.error("[Pipeline Service] Failed to sync issue to GitHub: {}", e.getMessage());
+            // GitHub 동기화 실패해도 이슈는 생성되도록
+        }
+
+        return savedIssue;
     }
 
     public PipelineListResponse getPipelinesByProject(Long projectId) {

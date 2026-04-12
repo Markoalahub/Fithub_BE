@@ -11,5 +11,8 @@ public record CreateIssueFromStepRequest(
         String title,
 
         @NotBlank(message = "Description is required")
-        String description
+        String description,
+
+        @NotBlank(message = "Repository URL is required")
+        String repoUrl
 ) {}
