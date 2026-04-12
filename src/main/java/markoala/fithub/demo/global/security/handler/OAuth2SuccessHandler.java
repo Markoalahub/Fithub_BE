@@ -3,23 +3,27 @@ package markoala.fithub.demo.global.security.handler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import markoala.fithub.demo.domain.user.entity.User;
-import markoala.fithub.demo.domain.user.service.UserService;
+import markoala.fithub.demo.user.User;
+import markoala.fithub.demo.user.UserService;
 import markoala.fithub.demo.global.security.jwt.JwtTokenProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+
+    public static final String SESSION_KEY_TOKEN = "jwt_token";
+    public static final String SESSION_KEY_USER_ID = "user_id";
+    public static final String SESSION_KEY_USERNAME = "username";
 
     private final JwtTokenProvider tokenProvider;
     private final UserService userService;
@@ -58,11 +62,12 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // JWT 토큰 생성
         String token = tokenProvider.createToken(authentication);
 
-        // JWT를 쿼리 파라미터로 전달
-        String targetUrl = UriComponentsBuilder.fromUriString("/home")
-                .queryParam("token", token)
-                .build().toUriString();
+        // JWT를 세션에 저장 후 /api/v1/auth/token 으로 리다이렉트
+        HttpSession session = request.getSession();
+        session.setAttribute(SESSION_KEY_TOKEN, token);
+        session.setAttribute(SESSION_KEY_USER_ID, user.getId());
+        session.setAttribute(SESSION_KEY_USERNAME, user.getUsername());
 
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        getRedirectStrategy().sendRedirect(request, response, "/api/v1/auth/token");
     }
 }

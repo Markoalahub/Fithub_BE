@@ -3,7 +3,7 @@ package markoala.fithub.demo.github.service;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import markoala.fithub.demo.auth.service.GithubWebClientService;
+import markoala.fithub.demo.auth.GithubWebClientService;
 import markoala.fithub.demo.github.dto.GithubRepositoryDto;
 import org.springframework.stereotype.Service;
 
