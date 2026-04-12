@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import markoala.fithub.demo.issue.Issue;
 import markoala.fithub.demo.pipeline.dto.CreateIssueFromStepRequest;
-import markoala.fithub.demo.pipeline.dto.GenerateAllPipelinesRequest;
 import markoala.fithub.demo.pipeline.dto.MultiPipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineGenerateRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineListResponse;
@@ -54,13 +53,13 @@ public class PipelineController {
         @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<MultiPipelineResponse> generateAllCategoryPipelines(
-            @Parameter(description = "프로젝트 ID를 포함한 요청")
-            @RequestPart(value = "request") GenerateAllPipelinesRequest request,
+            @Parameter(description = "프로젝트 ID", required = true)
+            @RequestParam Long projectId,
             @Parameter(description = "PRD PDF 파일 (선택 - 없으면 요구사항 없이 생성)")
             @RequestPart(value = "prdFile", required = false) MultipartFile prdFile
     ) throws IOException {
         byte[] pdfBytes = (prdFile != null && !prdFile.isEmpty()) ? prdFile.getBytes() : null;
-        MultiPipelineResponse response = pipelineService.generatePipelinesForAllCategories(request.projectId(), pdfBytes);
+        MultiPipelineResponse response = pipelineService.generatePipelinesForAllCategories(projectId, pdfBytes);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
