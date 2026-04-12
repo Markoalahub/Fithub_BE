@@ -7,6 +7,7 @@ import markoala.fithub.demo.issue.IssueSync;
 import markoala.fithub.demo.issue.IssueSyncRepository;
 import markoala.fithub.demo.issue.RepositoryRepository;
 import markoala.fithub.demo.issue.GitHubIssueService;
+import markoala.fithub.demo.pipeline.dto.MultiPipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineListResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineStepCreateRequest;
@@ -47,100 +48,83 @@ public class PipelineService {
     }
 
     /**
-     * FastAPI에 파이프라인 생성 요청하고, 반환된 스텝들을 Spring DB에 Issue로 저장
-     * @param projectId Spring Project ID
-     * @param requirements 요구사항 텍스트
-     * @param category 카테고리
-     * @return PipelineResponse (FastAPI에서 생성된 파이프라인)
+     * 프로젝트 내 모든 카테고리에 대해 파이프라인 생성 (PDF PRD 지원)
+     * 프로젝트의 GithubRepository 목록에서 category를 추출해 카테고리별로 FastAPI 호출
      */
-    public PipelineResponse generatePipeline(Long projectId, String requirements, String category) {
-        log.info("[Pipeline Service] Generating pipeline for project {} with category: {}", projectId, category);
+    public MultiPipelineResponse generatePipelinesForAllCategories(Long projectId, byte[] pdfBytes) {
+        List<GithubRepository> repos = repositoryRepository.findByProjectId(projectId);
 
-        // FastAPI에 파이프라인 생성 요청
-        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, requirements, category);
+        List<String> categories = repos.stream()
+                .map(GithubRepository::getCategory)
+                .filter(c -> c != null && !c.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
 
-        log.info("[Pipeline Service] Pipeline generated with {} steps", pipelineResponse.steps().size());
-
-        // 파이프라인 스텝들을 Spring Issue로 저장 (추후 GitHub 동기화용)
-        for (PipelineStepResponse step : pipelineResponse.steps()) {
-            Issue issue = Issue.createIssue(
-                    null, // repositoryId는 나중에 설정
-                    null, // githubIssueNumber는 GitHub 동기화 후 설정
-                    step.title(),
-                    step.description(),
-                    "PENDING"
-            );
-            issue.setPipelineStepId(step.id().intValue());
-            issueRepository.save(issue);
-            log.info("[Pipeline Service] Issue created from pipeline step {}: {}", step.id(), step.title());
+        if (categories.isEmpty()) {
+            throw new IllegalArgumentException("No categorized repositories found for project: " + projectId);
         }
 
-        return pipelineResponse;
+        log.info("[Pipeline Service] Generating pipelines for project {} categories: {}", projectId, categories);
+
+        List<PipelineResponse> pipelines = categories.stream()
+                .map(category -> {
+                    log.info("[Pipeline Service] Generating pipeline for category: {}", category);
+                    PipelineResponse response = pipelineClient.generateAndSavePipeline(projectId, category, null, pdfBytes);
+                    savePipelineStepsAsIssues(response);
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        return new MultiPipelineResponse(projectId, pipelines.size(), pipelines);
     }
 
     /**
-     * 프로젝트의 파이프라인 목록 조회
+     * 단일 파이프라인 생성
      */
+    public PipelineResponse generatePipeline(Long projectId, String requirements, String category) {
+        log.info("[Pipeline Service] Generating pipeline for project {} with category: {}", projectId, category);
+        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, category, requirements, null);
+        log.info("[Pipeline Service] Pipeline generated with {} steps", pipelineResponse.steps().size());
+        savePipelineStepsAsIssues(pipelineResponse);
+        return pipelineResponse;
+    }
+
+    private void savePipelineStepsAsIssues(PipelineResponse pipelineResponse) {
+        for (PipelineStepResponse step : pipelineResponse.steps()) {
+            Issue issue = Issue.createIssue(null, null, step.title(), step.description(), "PENDING");
+            issue.setPipelineStepId(step.id().intValue());
+            issueRepository.save(issue);
+        }
+    }
+
     public PipelineListResponse getPipelinesByProject(Long projectId) {
         log.info("[Pipeline Service] Fetching pipelines for project {}", projectId);
         return pipelineClient.getPipelinesByProject(projectId);
     }
 
-    /**
-     * 파이프라인에 새로운 스텝 추가
-     */
     public PipelineStepResponse addStepToPipeline(Long pipelineId, String title, String description) {
         log.info("[Pipeline Service] Adding step to pipeline {}: {}", pipelineId, title);
-
-        PipelineStepCreateRequest request = new PipelineStepCreateRequest(
-                title,
-                description,
-                false,
-                "user_created"
-        );
-
+        PipelineStepCreateRequest request = new PipelineStepCreateRequest(title, description, false, "user_created");
         PipelineStepResponse stepResponse = pipelineClient.addPipelineStep(pipelineId, request);
 
-        // Spring DB에도 Issue로 저장
-        Issue issue = Issue.createIssue(
-                null,
-                null,
-                stepResponse.title(),
-                stepResponse.description(),
-                "PENDING"
-        );
+        Issue issue = Issue.createIssue(null, null, stepResponse.title(), stepResponse.description(), "PENDING");
         issue.setPipelineStepId(stepResponse.id().intValue());
         issueRepository.save(issue);
 
-        log.info("[Pipeline Service] Step {} added to pipeline {}", stepResponse.id(), pipelineId);
         return stepResponse;
     }
 
-    /**
-     * 파이프라인 스텝을 완료 처리
-     */
     public void completeStep(Long stepId) {
         log.info("[Pipeline Service] Completing pipeline step {}", stepId);
         pipelineClient.updatePipelineStep(stepId, new PipelineStepUpdateRequest(true));
     }
 
-    /**
-     * 오케스트레이션: 파이프라인 스텝들을 GitHub Issues로 동기화
-     * @param pipelineId FastAPI Pipeline ID
-     * @param repositoryId Spring Repository ID
-     * @param accessToken GitHub Access Token
-     */
     public List<IssueSync> syncPipelineToGitHub(Long pipelineId, Long repositoryId, String accessToken) {
         log.info("[Pipeline Service] Syncing pipeline {} to GitHub repository {}", pipelineId, repositoryId);
-
-        // Repository 정보 조회
         GithubRepository repository = repositoryRepository.findById(repositoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Repository not found: " + repositoryId));
 
-        // 파이프라인의 모든 Issue 조회
         List<Issue> issues = issueRepository.findByRepositoryId(repositoryId);
-
-        // 각 Issue를 GitHub로 동기화
         return issues.stream()
                 .map(issue -> {
                     IssueSync sync = gitHubIssueService.syncIssueToGitHub(issue, repository.getRepoUrl(), accessToken);

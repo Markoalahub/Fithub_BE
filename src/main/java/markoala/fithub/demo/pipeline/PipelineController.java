@@ -7,14 +7,20 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import markoala.fithub.demo.pipeline.dto.MultiPipelineResponse;
+import markoala.fithub.demo.pipeline.dto.PipelineGenerateRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineListResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineResponse;
+import markoala.fithub.demo.pipeline.dto.PipelineStepAddRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineStepResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/v1/pipelines")
@@ -27,6 +33,33 @@ public class PipelineController {
         this.pipelineService = pipelineService;
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // 핵심: 프로젝트 내 모든 카테고리 파이프라인 일괄 생성 (PDF PRD 지원)
+    // ─────────────────────────────────────────────────────────────────
+    @PostMapping(value = "/generate-all", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+        summary = "전체 카테고리 파이프라인 생성 (PDF PRD 기반)",
+        description = "프로젝트에 등록된 모든 저장소의 카테고리(FE/BE/AI 등)별로 파이프라인을 생성합니다. " +
+                      "PDF 형태의 PRD 파일을 업로드하면 AI가 분석하여 직군별 파이프라인을 자동 생성합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "전체 카테고리 파이프라인 생성 성공",
+                content = @Content(schema = @Schema(implementation = MultiPipelineResponse.class))),
+        @ApiResponse(responseCode = "400", description = "카테고리가 설정된 저장소 없음"),
+        @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
+    })
+    public ResponseEntity<MultiPipelineResponse> generateAllCategoryPipelines(
+            @Parameter(description = "Spring Project ID", required = true)
+            @RequestParam Long projectId,
+            @Parameter(description = "PRD PDF 파일 (선택 - 없으면 요구사항 없이 생성)")
+            @RequestPart(value = "prdFile", required = false) MultipartFile prdFile
+    ) throws IOException {
+        byte[] pdfBytes = (prdFile != null && !prdFile.isEmpty()) ? prdFile.getBytes() : null;
+        MultiPipelineResponse response = pipelineService.generatePipelinesForAllCategories(projectId, pdfBytes);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
     @GetMapping("/project/{projectId}")
     @Operation(summary = "프로젝트 파이프라인 조회", description = "특정 프로젝트의 모든 파이프라인 목록을 조회합니다")
     @ApiResponses(value = {
@@ -52,14 +85,10 @@ public class PipelineController {
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<PipelineResponse> generatePipeline(
-            @Parameter(description = "프로젝트 ID", required = true)
-            @RequestParam Long projectId,
-            @Parameter(description = "개발 요구사항", required = true)
-            @RequestParam String requirements,
-            @Parameter(description = "카테고리 (선택)", required = false)
-            @RequestParam(required = false) String category
+            @Valid @RequestBody PipelineGenerateRequest request
     ) {
-        PipelineResponse response = pipelineService.generatePipeline(projectId, requirements, category);
+        PipelineResponse response = pipelineService.generatePipeline(
+                request.projectId(), request.requirements(), request.category());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -74,12 +103,10 @@ public class PipelineController {
     public ResponseEntity<PipelineStepResponse> addStepToPipeline(
             @Parameter(description = "파이프라인 ID", required = true)
             @PathVariable Long pipelineId,
-            @Parameter(description = "스텝 제목", required = true)
-            @RequestParam String title,
-            @Parameter(description = "스텝 설명", required = true)
-            @RequestParam String description
+            @Valid @RequestBody PipelineStepAddRequest request
     ) {
-        PipelineStepResponse response = pipelineService.addStepToPipeline(pipelineId, title, description);
+        PipelineStepResponse response = pipelineService.addStepToPipeline(
+                pipelineId, request.title(), request.description());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
