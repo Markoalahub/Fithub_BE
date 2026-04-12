@@ -74,6 +74,7 @@ public class PipelineClient {
     public PipelineStepResponse addPipelineStep(Long pipelineId, PipelineStepCreateRequest request) {
         return restClient.post()
                 .uri("/pipelines/{pipelineId}/steps", pipelineId)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
                 .body(PipelineStepResponse.class);
@@ -82,6 +83,7 @@ public class PipelineClient {
     public void updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
         restClient.patch()
                 .uri("/pipelines/steps/{stepId}", stepId)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
                 .toBodilessEntity();
