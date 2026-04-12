@@ -8,8 +8,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
+import markoala.fithub.demo.issue.dto.UpdateIssueStatusRequest;
+import markoala.fithub.demo.issue.dto.SyncIssueToGitHubRequest;
 import markoala.fithub.demo.user.User;
 import markoala.fithub.demo.user.UserService;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -118,10 +121,7 @@ public class IssueController {
     public ResponseEntity<Map<String, String>> updateIssueStatus(
             @Parameter(description = "Issue ID", required = true)
             @PathVariable Long issueId,
-            @Parameter(description = "새로운 상태 (OPEN, CLOSED)", required = true)
-            @RequestParam String status,
-            @Parameter(description = "GitHub 저장소 URL", required = true)
-            @RequestParam String repoUrl,
+            @Valid @RequestBody UpdateIssueStatusRequest request,
             @RequestHeader(name = "Authorization") String authHeader
     ) {
         // JWT 토큰에서 userId 추출
@@ -137,15 +137,15 @@ public class IssueController {
         IssueSync sync = issueSyncRepository.findByIssueId(issueId)
                 .orElseThrow(() -> new IllegalArgumentException("IssueSync not found for issue: " + issueId));
 
-        gitHubIssueService.updateIssueStatus(sync, status, githubAccessToken, repoUrl);
-        issue.updateStatus(status);
+        gitHubIssueService.updateIssueStatus(sync, request.status(), githubAccessToken, request.repoUrl());
+        issue.updateStatus(request.status());
         issueRepository.save(issue);
 
-        log.info("[Issue] Status updated for Issue #{} to {} by user {}", issueId, status, userId);
+        log.info("[Issue] Status updated for Issue #{} to {} by user {}", issueId, request.status(), userId);
 
         return ResponseEntity.ok(Map.of(
                 "issueId", issueId.toString(),
-                "status", status,
+                "status", request.status(),
                 "message", "Issue status updated successfully"
         ));
     }
@@ -162,8 +162,7 @@ public class IssueController {
     public ResponseEntity<IssueSync> syncIssueToGitHub(
             @Parameter(description = "Issue ID", required = true)
             @PathVariable Long issueId,
-            @Parameter(description = "GitHub 저장소 URL", required = true)
-            @RequestParam String repoUrl,
+            @Valid @RequestBody SyncIssueToGitHubRequest request,
             @RequestHeader(name = "Authorization") String authHeader
     ) {
         // JWT 토큰에서 userId 추출
@@ -176,7 +175,7 @@ public class IssueController {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new IllegalArgumentException("Issue not found: " + issueId));
 
-        IssueSync sync = gitHubIssueService.syncIssueToGitHub(issue, repoUrl, githubAccessToken);
+        IssueSync sync = gitHubIssueService.syncIssueToGitHub(issue, request.repoUrl(), githubAccessToken);
 
         log.info("[Issue] Issue #{} synced to GitHub by user {}", issueId, userId);
 

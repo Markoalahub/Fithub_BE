@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import markoala.fithub.demo.issue.Issue;
 import markoala.fithub.demo.pipeline.dto.CreateIssueFromStepRequest;
+import markoala.fithub.demo.pipeline.dto.GenerateAllPipelinesRequest;
 import markoala.fithub.demo.pipeline.dto.MultiPipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineGenerateRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineListResponse;
@@ -17,6 +18,7 @@ import markoala.fithub.demo.pipeline.dto.PipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineStepAddRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineStepResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineStepUpdateRequest;
+import markoala.fithub.demo.pipeline.dto.SyncPipelineToGitHubRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -52,13 +54,13 @@ public class PipelineController {
         @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<MultiPipelineResponse> generateAllCategoryPipelines(
-            @Parameter(description = "Spring Project ID", required = true)
-            @RequestParam Long projectId,
+            @Parameter(description = "프로젝트 ID를 포함한 요청")
+            @RequestPart(value = "request") GenerateAllPipelinesRequest request,
             @Parameter(description = "PRD PDF 파일 (선택 - 없으면 요구사항 없이 생성)")
             @RequestPart(value = "prdFile", required = false) MultipartFile prdFile
     ) throws IOException {
         byte[] pdfBytes = (prdFile != null && !prdFile.isEmpty()) ? prdFile.getBytes() : null;
-        MultiPipelineResponse response = pipelineService.generatePipelinesForAllCategories(projectId, pdfBytes);
+        MultiPipelineResponse response = pipelineService.generatePipelinesForAllCategories(request.projectId(), pdfBytes);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -178,12 +180,9 @@ public class PipelineController {
     public ResponseEntity<?> syncPipelineToGitHub(
             @Parameter(description = "파이프라인 ID", required = true)
             @PathVariable Long pipelineId,
-            @Parameter(description = "저장소 ID", required = true)
-            @RequestParam Long repositoryId,
-            @Parameter(description = "GitHub Access Token", required = true)
-            @RequestParam String accessToken
+            @Valid @RequestBody SyncPipelineToGitHubRequest request
     ) {
-        var result = pipelineService.syncPipelineToGitHub(pipelineId, repositoryId, accessToken);
+        var result = pipelineService.syncPipelineToGitHub(pipelineId, request.repositoryId(), request.accessToken());
         return ResponseEntity.ok(result);
     }
 }

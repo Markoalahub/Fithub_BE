@@ -131,7 +131,7 @@ POST /pipelines/generate-all
 Content-Type: multipart/form-data
 
 Body:
-- projectId: 1
+- request: {"projectId": 1} (multipart/form-data JSON)
 - prdFile: (optional) PDF file
 ```
 
@@ -261,12 +261,17 @@ GET /issues/repository/{repositoryId}
 **사용 시나리오**: Spring Issue를 실제 GitHub Issue로 생성
 
 ```http
-POST /issues/{issueId}/sync?repoUrl=https://github.com/KYH-99/travel-plan
+POST /issues/{issueId}/sync
+Content-Type: application/json
 Authorization: Bearer <JWT_TOKEN>
 ```
 
-**Query Parameters**
-- `repoUrl`: GitHub 저장소 URL
+**Request Body**
+```json
+{
+  "repoUrl": "https://github.com/KYH-99/travel-plan"
+}
+```
 
 **Response (201 Created)**
 ```json
@@ -309,7 +314,9 @@ POST /pipelines/steps/{pipelineStepId}/create-issue
 
 ### Step 5: GitHub 동기화
 ```
-POST /issues/{issueId}/sync?repoUrl=...&accessToken=...
+POST /issues/{issueId}/sync
+Content-Type: application/json
+Request Body: { "repoUrl": "..." }
 ```
 
 ---
