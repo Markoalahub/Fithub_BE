@@ -17,12 +17,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-@RestController
+@Controller
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication", description = "GitHub OAuth 인증 API")
 public class AuthController {
@@ -55,10 +56,10 @@ public class AuthController {
     @GetMapping("/login")
     @Operation(
             summary = "GitHub OAuth 로그인",
-            description = "GitHub OAuth 인증 URL을 반환합니다. 프론트에서 이 URL로 리다이렉트하면 됩니다"
+            description = "GitHub OAuth 인증 페이지로 자동 리다이렉트합니다"
     )
-    public ResponseEntity<?> login() {
-        log.info("[Auth] Generating GitHub OAuth URL");
+    public String login() {
+        log.info("[Auth] Redirecting to GitHub OAuth");
 
         String githubAuthUrl = String.format(
                 "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=repo,user",
@@ -66,19 +67,16 @@ public class AuthController {
                 githubRedirectUri
         );
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("authUrl", githubAuthUrl);
-        response.put("message", "프론트엔드에서 이 URL로 리다이렉트하세요");
-
-        return ResponseEntity.ok(response);
+        return "redirect:" + githubAuthUrl;
     }
 
     @GetMapping("/github/callback")
+    @ResponseBody
     @Operation(
             summary = "GitHub OAuth 콜백",
-            description = "GitHub에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰을 발급하고 JSON으로 응답합니다"
+            description = "GitHub에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰, GitHub Access Token을 발급합니다"
     )
-    public ResponseEntity<?> githubCallback(
+    public Map<String, Object> githubCallback(
             @Parameter(description = "GitHub OAuth 인증 코드", required = true)
             @RequestParam String code,
             @Parameter(description = "CSRF 방지용 상태 토큰")
@@ -108,18 +106,20 @@ public class AuthController {
 
         log.info("[Auth] JWT tokens generated for user: {}", user.getId());
 
-        // 5. 토큰을 JSON으로 응답 (프론트에서 처리)
+        // 5. 토큰 정보를 JSON으로 응답
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
+        response.put("githubAccessToken", githubAccessToken);
         response.put("user", Map.of(
                 "id", user.getId(),
                 "username", user.getUsername(),
                 "email", user.getEmail()
         ));
-        response.put("redirectUrl", "http://localhost:3000/dashboard");
 
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        log.info("[Auth] OAuth callback completed. Tokens issued for user: {}", user.getId());
+
+        return response;
     }
 }
