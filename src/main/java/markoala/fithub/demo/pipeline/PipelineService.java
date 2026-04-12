@@ -70,7 +70,6 @@ public class PipelineService {
                 .map(category -> {
                     log.info("[Pipeline Service] Generating pipeline for category: {}", category);
                     PipelineResponse response = pipelineClient.generateAndSavePipeline(projectId, category, null, pdfBytes);
-                    savePipelineStepsAsIssues(response);
                     return response;
                 })
                 .collect(Collectors.toList());
@@ -85,16 +84,21 @@ public class PipelineService {
         log.info("[Pipeline Service] Generating pipeline for project {} with category: {}", projectId, category);
         PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, category, requirements, null);
         log.info("[Pipeline Service] Pipeline generated with {} steps", pipelineResponse.steps().size());
-        savePipelineStepsAsIssues(pipelineResponse);
         return pipelineResponse;
     }
 
-    private void savePipelineStepsAsIssues(PipelineResponse pipelineResponse) {
-        for (PipelineStepResponse step : pipelineResponse.steps()) {
-            Issue issue = Issue.createIssue(null, null, step.title(), step.description(), "PENDING");
-            issue.setPipelineStepId(step.id().intValue());
-            issueRepository.save(issue);
-        }
+    /**
+     * 파이프라인 스텝을 Issue로 변환 (사용자 선택 시)
+     * @param pipelineStepId FastAPI의 pipeline_step ID
+     * @param repositoryId Spring의 repository ID
+     * @param title Issue 제목
+     * @param description Issue 설명
+     */
+    public Issue createIssueFromPipelineStep(Long pipelineStepId, Long repositoryId, String title, String description) {
+        log.info("[Pipeline Service] Creating issue from pipeline step {}: {}", pipelineStepId, title);
+        Issue issue = Issue.createIssue(repositoryId, null, title, description, "PENDING");
+        issue.setPipelineStepId(pipelineStepId.intValue());
+        return issueRepository.save(issue);
     }
 
     public PipelineListResponse getPipelinesByProject(Long projectId) {
@@ -105,18 +109,22 @@ public class PipelineService {
     public PipelineStepResponse addStepToPipeline(Long pipelineId, String title, String description) {
         log.info("[Pipeline Service] Adding step to pipeline {}: {}", pipelineId, title);
         PipelineStepCreateRequest request = new PipelineStepCreateRequest(title, description, false, "user_created");
-        PipelineStepResponse stepResponse = pipelineClient.addPipelineStep(pipelineId, request);
+        return pipelineClient.addPipelineStep(pipelineId, request);
+    }
 
-        Issue issue = Issue.createIssue(null, null, stepResponse.title(), stepResponse.description(), "PENDING");
-        issue.setPipelineStepId(stepResponse.id().intValue());
-        issueRepository.save(issue);
-
-        return stepResponse;
+    /**
+     * 파이프라인 스텝 수정 (title, description, is_completed)
+     * @param stepId FastAPI의 pipeline_step ID
+     * @param request 수정할 데이터
+     */
+    public PipelineStepResponse updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
+        log.info("[Pipeline Service] Updating pipeline step {}", stepId);
+        return pipelineClient.updatePipelineStep(stepId, request);
     }
 
     public void completeStep(Long stepId) {
         log.info("[Pipeline Service] Completing pipeline step {}", stepId);
-        pipelineClient.updatePipelineStep(stepId, new PipelineStepUpdateRequest(true));
+        pipelineClient.updatePipelineStep(stepId, new PipelineStepUpdateRequest(null, null, true));
     }
 
     public List<IssueSync> syncPipelineToGitHub(Long pipelineId, Long repositoryId, String accessToken) {

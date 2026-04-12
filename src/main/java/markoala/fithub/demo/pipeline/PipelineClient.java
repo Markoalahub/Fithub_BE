@@ -64,11 +64,11 @@ public class PipelineClient {
                 .body(PipelineStepResponse.class);
     }
 
-    public void updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
-        restClient.patch()
+    public PipelineStepResponse updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
+        return restClient.patch()
                 .uri("/pipelines/steps/{stepId}", stepId)
                 .body(request)
                 .retrieve()
-                .toBodilessEntity();
+                .body(PipelineStepResponse.class);
     }
 }

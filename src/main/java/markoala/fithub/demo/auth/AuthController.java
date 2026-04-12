@@ -1,59 +1,114 @@
 package markoala.fithub.demo.auth;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpSession;
-import markoala.fithub.demo.global.security.handler.OAuth2SuccessHandler;
+import markoala.fithub.demo.global.security.jwt.JwtProvider;
+import markoala.fithub.demo.github.service.GithubRepositoryService;
+import markoala.fithub.demo.user.User;
+import markoala.fithub.demo.user.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@Tag(name = "Auth", description = "GitHub OAuth2 로그인 및 JWT 발급 API")
+@Tag(name = "Authentication", description = "GitHub OAuth 인증 API")
 public class AuthController {
 
-    @GetMapping("/token")
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
+    private final GithubRepositoryService githubRepositoryService;
+    private final UserService userService;
+    private final JwtProvider jwtProvider;
+
+    @Value("${github.client-id}")
+    private String githubClientId;
+
+    @Value("${github.client-secret}")
+    private String githubClientSecret;
+
+    @Value("${github.redirect-uri}")
+    private String githubRedirectUri;
+
+    public AuthController(
+            GithubRepositoryService githubRepositoryService,
+            UserService userService,
+            JwtProvider jwtProvider
+    ) {
+        this.githubRepositoryService = githubRepositoryService;
+        this.userService = userService;
+        this.jwtProvider = jwtProvider;
+    }
+
+    @GetMapping("/login")
     @Operation(
-            summary = "JWT 토큰 발급",
-            description = """
-                    GitHub OAuth2 로그인 완료 후 JWT를 JSON으로 반환합니다.
-
-                    **사용 흐름:**
-                    1. 브라우저 또는 Postman에서 `/oauth2/authorization/github` 접속
-                    2. GitHub 로그인 완료
-                    3. 자동으로 이 엔드포인트로 redirect되며 JWT 반환
-                    4. 이후 모든 API 요청에 `Authorization: Bearer <token>` 헤더 사용
-                    """
+            summary = "GitHub OAuth 로그인",
+            description = "GitHub OAuth 인증 페이지로 리다이렉트합니다"
     )
-    @ApiResponse(responseCode = "200", description = "JWT 발급 성공")
-    @ApiResponse(responseCode = "401", description = "OAuth2 로그인 먼저 필요")
-    public ResponseEntity<Map<String, Object>> getToken(HttpSession session) {
-        String token    = (String) session.getAttribute(OAuth2SuccessHandler.SESSION_KEY_TOKEN);
-        Long   userId   = (Long)   session.getAttribute(OAuth2SuccessHandler.SESSION_KEY_USER_ID);
-        String username = (String) session.getAttribute(OAuth2SuccessHandler.SESSION_KEY_USERNAME);
+    public String login() {
+        log.info("[Auth] Redirecting to GitHub OAuth");
 
-        if (token == null) {
-            return ResponseEntity.status(401).body(Map.of(
-                    "error", "OAuth2 로그인이 필요합니다",
-                    "loginUrl", "/oauth2/authorization/github"
-            ));
-        }
+        String githubAuthUrl = String.format(
+                "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=repo,user",
+                githubClientId,
+                githubRedirectUri
+        );
 
-        // 세션에서 제거 (1회용)
-        session.removeAttribute(OAuth2SuccessHandler.SESSION_KEY_TOKEN);
-        session.removeAttribute(OAuth2SuccessHandler.SESSION_KEY_USER_ID);
-        session.removeAttribute(OAuth2SuccessHandler.SESSION_KEY_USERNAME);
+        return "redirect:" + githubAuthUrl;
+    }
 
-        return ResponseEntity.ok(Map.of(
-                "token",    token,
-                "userId",   userId,
-                "username", username,
-                "type",     "Bearer"
-        ));
+    @GetMapping("/github/callback")
+    @Operation(
+            summary = "GitHub OAuth 콜백",
+            description = "GitHub에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰을 발급하고 대시보드로 리다이렉트합니다"
+    )
+    public String githubCallback(
+            @Parameter(description = "GitHub OAuth 인증 코드", required = true)
+            @RequestParam String code,
+            @Parameter(description = "CSRF 방지용 상태 토큰")
+            @RequestParam(required = false) String state
+    ) throws IOException {
+        log.info("[Auth] Processing GitHub callback with code: {}", code);
+
+        // 1. code → GitHub access token 교환
+        String githubAccessToken = githubRepositoryService.exchangeCodeForToken(code);
+        log.info("[Auth] GitHub access token acquired");
+
+        // 2. GitHub 사용자 정보 조회
+        Map<String, Object> userInfo = githubRepositoryService.getUserInfoFromGithub(githubAccessToken);
+        String githubLogin = (String) userInfo.get("login");
+        String githubEmail = (String) userInfo.get("email");
+        Long githubId = ((Number) userInfo.get("id")).longValue();
+
+        log.info("[Auth] GitHub user info: login={}, email={}", githubLogin, githubEmail);
+
+        // 3. DB에 사용자 저장 또는 업데이트
+        User user = userService.findOrCreateGithubUser(githubLogin, githubEmail, githubId, githubAccessToken);
+        log.info("[Auth] User saved/updated: id={}, username={}", user.getId(), user.getUsername());
+
+        // 4. JWT 토큰 발급
+        String accessToken = jwtProvider.generateAccessToken(user);
+        String refreshToken = jwtProvider.generateRefreshToken(user);
+
+        log.info("[Auth] JWT tokens generated for user: {}", user.getId());
+
+        // 5. 대시보드로 리다이렉트 (토큰 포함)
+        String redirectUrl = String.format(
+                "http://localhost:3000/dashboard?accessToken=%s&refreshToken=%s",
+                accessToken,
+                refreshToken
+        );
+
+        return "redirect:" + redirectUrl;
     }
 }

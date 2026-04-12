@@ -8,12 +8,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import markoala.fithub.demo.issue.Issue;
+import markoala.fithub.demo.pipeline.dto.CreateIssueFromStepRequest;
 import markoala.fithub.demo.pipeline.dto.MultiPipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineGenerateRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineListResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineResponse;
 import markoala.fithub.demo.pipeline.dto.PipelineStepAddRequest;
 import markoala.fithub.demo.pipeline.dto.PipelineStepResponse;
+import markoala.fithub.demo.pipeline.dto.PipelineStepUpdateRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -76,8 +79,8 @@ public class PipelineController {
     }
 
     @PostMapping("/generate")
-    @Operation(summary = "파이프라인 생성 및 GitHub 동기화",
-            description = "요구사항 텍스트를 기반으로 AI 파이프라인을 생성하고, Issue들을 Spring DB에 저장합니다")
+    @Operation(summary = "단일 파이프라인 생성",
+            description = "요구사항 텍스트를 기반으로 특정 카테고리의 AI 파이프라인을 생성합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "파이프라인 생성 성공",
                     content = @Content(schema = @Schema(implementation = PipelineResponse.class))),
@@ -108,6 +111,45 @@ public class PipelineController {
         PipelineStepResponse response = pipelineService.addStepToPipeline(
                 pipelineId, request.title(), request.description());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 파이프라인 스텝 → Issue 변환 (사용자 선택)
+    // ─────────────────────────────────────────────────────────────────
+    @PostMapping("/steps/{pipelineStepId}/create-issue")
+    @Operation(summary = "파이프라인 스텝을 Issue로 변환",
+            description = "사용자가 선택한 파이프라인 스텝을 실제 작업 Issue로 생성합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Issue 생성 성공",
+                    content = @Content(schema = @Schema(implementation = Issue.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+            @ApiResponse(responseCode = "404", description = "저장소를 찾을 수 없음")
+    })
+    public ResponseEntity<Issue> createIssueFromStep(
+            @Parameter(description = "FastAPI Pipeline Step ID", required = true)
+            @PathVariable Long pipelineStepId,
+            @Valid @RequestBody CreateIssueFromStepRequest request
+    ) {
+        Issue issue = pipelineService.createIssueFromPipelineStep(
+                pipelineStepId, request.repositoryId(), request.title(), request.description());
+        return ResponseEntity.status(HttpStatus.CREATED).body(issue);
+    }
+
+    @PutMapping("/steps/{stepId}")
+    @Operation(summary = "파이프라인 스텝 수정",
+            description = "파이프라인 스텝의 제목, 설명, 완료 여부를 수정합니다. 개발자/기획자가 AI 생성 스텝을 조정할 수 있습니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "스텝 수정 성공",
+                    content = @Content(schema = @Schema(implementation = PipelineStepResponse.class))),
+            @ApiResponse(responseCode = "404", description = "스텝을 찾을 수 없음")
+    })
+    public ResponseEntity<PipelineStepResponse> updateStep(
+            @Parameter(description = "파이프라인 스텝 ID", required = true)
+            @PathVariable Long stepId,
+            @Valid @RequestBody PipelineStepUpdateRequest request
+    ) {
+        PipelineStepResponse response = pipelineService.updatePipelineStep(stepId, request);
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/steps/{stepId}/complete")

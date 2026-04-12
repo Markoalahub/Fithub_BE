@@ -42,22 +42,22 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         Object idObj = oauth2User.getAttribute("id");
         String id = idObj != null ? String.valueOf(((Number) idObj).longValue()) : null;
 
-        // 사용자 조회 또는 생성
-        User user = userService.findOrCreateGitHubUser(login, email, id);
-
-        // GitHub access token 저장
+        // GitHub access token 추출
+        String githubAccessToken = null;
         if (authentication instanceof OAuth2AuthenticationToken oauthToken) {
             OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
                     oauthToken.getAuthorizedClientRegistrationId(),
                     oauthToken.getName()
             );
-            
+
             if (client != null && client.getAccessToken() != null) {
-                String accessToken = client.getAccessToken().getTokenValue();
-                user.updateGithubAccessToken(accessToken);
-                userService.save(user);
+                githubAccessToken = client.getAccessToken().getTokenValue();
             }
         }
+
+        // 사용자 조회 또는 생성
+        Long githubIdLong = id != null ? Long.parseLong(id) : null;
+        User user = userService.findOrCreateGithubUser(login, email, githubIdLong, githubAccessToken);
 
         // JWT 토큰 생성
         String token = tokenProvider.createToken(authentication);

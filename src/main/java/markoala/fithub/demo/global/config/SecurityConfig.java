@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.global.security.handler.OAuth2SuccessHandler;
 import markoala.fithub.demo.global.security.jwt.JwtAuthenticationFilter;
+import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import markoala.fithub.demo.global.security.jwt.JwtTokenProvider;
 
 @Configuration
@@ -22,6 +23,7 @@ import markoala.fithub.demo.global.security.jwt.JwtTokenProvider;
 public class SecurityConfig {
 
         private final JwtTokenProvider tokenProvider;
+        private final JwtProvider jwtProvider;
         private final OAuth2SuccessHandler successHandler;
 
         // 정적 리소스는 보안 필터를 적용하지 않음
@@ -91,7 +93,7 @@ public class SecurityConfig {
                                                 .deleteCookies("JSESSIONID")
                                 )
                                 // JWT 필터 등록
-                                .addFilterBefore(new JwtAuthenticationFilter(tokenProvider),
+                                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
                                                 UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();

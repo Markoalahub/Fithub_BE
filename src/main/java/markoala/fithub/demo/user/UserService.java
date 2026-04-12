@@ -56,21 +56,29 @@ public class UserService implements UserDetailsService {
      * GitHub OAuth 사용자 정보로 사용자 조회 또는 생성
      */
     @Transactional
-    public User findOrCreateGitHubUser(String githubLogin, String email, String githubId) {
+    public User findOrCreateGithubUser(String githubLogin, String email, Long githubId, String githubAccessToken) {
         Optional<User> existingUser = userRepository.findByUsername(githubLogin);
 
         if (existingUser.isPresent()) {
-            return existingUser.get();
+            User user = existingUser.get();
+            user.updateGithubAccessToken(githubAccessToken);
+            return userRepository.save(user);
         }
 
         // 새로운 GitHub 사용자 생성
         User newUser = User.createUser(
                 githubLogin,
                 email != null ? email : githubLogin + "@github.com",
-                githubId,
-                "USER"
+                "USER",
+                String.valueOf(githubId)
         );
+        newUser.updateGithubAccessToken(githubAccessToken);
         return userRepository.save(newUser);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
     }
 
     @Transactional(readOnly = true)
