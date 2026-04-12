@@ -3,8 +3,8 @@ package markoala.fithub.demo.global.security.handler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import markoala.fithub.demo.domain.user.entity.User;
-import markoala.fithub.demo.domain.user.service.UserService;
+import markoala.fithub.demo.user.User;
+import markoala.fithub.demo.user.UserService;
 import markoala.fithub.demo.global.security.jwt.JwtTokenProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -20,6 +20,10 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+
+    public static final String SESSION_KEY_TOKEN = "jwt_token";
+    public static final String SESSION_KEY_USER_ID = "user_id";
+    public static final String SESSION_KEY_USERNAME = "username";
 
     private final JwtTokenProvider tokenProvider;
     private final UserService userService;
