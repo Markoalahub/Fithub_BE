@@ -14,10 +14,10 @@ public class Issue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "repository_id", nullable = false)
+    @Column(name = "repository_id", nullable = true)
     private Long repositoryId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Integer githubIssueNumber;
 
     @Column(nullable = false)

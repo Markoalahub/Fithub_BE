@@ -2,6 +2,7 @@ package markoala.fithub.demo.github;
 
 import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.github.dto.GithubRepositoryDto;
+import markoala.fithub.demo.github.service.GithubRepositoryService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
