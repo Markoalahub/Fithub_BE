@@ -129,7 +129,7 @@ public class PipelineService {
                     .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
             String githubAccessToken = user.getGithubAccessToken();
 
-            gitHubIssueService.syncIssueToGithub(savedIssue, repoUrl, githubAccessToken);
+            gitHubIssueService.syncIssueToGitHub(savedIssue, repoUrl, githubAccessToken);
             log.info("[Pipeline Service] Issue {} synced to GitHub", savedIssue.getId());
         } catch (Exception e) {
             log.error("[Pipeline Service] Failed to sync issue to GitHub: {}", e.getMessage());
