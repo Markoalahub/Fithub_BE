@@ -29,9 +29,8 @@ public class PipelineClient {
         MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
         formData.add("project_id", projectId);
         formData.add("category", category);
-        if (requirements != null && !requirements.isBlank()) {
-            formData.add("requirements", requirements);
-        }
+        // requirements가 없으면 빈 문자열 전송 (FastAPI에서 필수)
+        formData.add("requirements", requirements != null && !requirements.isBlank() ? requirements : "");
         if (pdfBytes != null && pdfBytes.length > 0) {
             formData.add("prd_file", new ByteArrayResource(pdfBytes) {
                 @Override
