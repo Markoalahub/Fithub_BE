@@ -11,7 +11,6 @@ import jakarta.validation.Valid;
 import markoala.fithub.demo.github.service.GithubRepositoryService;
 import markoala.fithub.demo.issue.dto.GithubRepositoryCreateRequest;
 import markoala.fithub.demo.issue.dto.GithubRepositoryResponse;
-import markoala.fithub.demo.issue.dto.GitHubUserRepositoriesResponse;
 import markoala.fithub.demo.issue.dto.SyncGithubRepositoriesRequest;
 import markoala.fithub.demo.project.ProjectRepository;
 import org.slf4j.Logger;
@@ -67,47 +66,10 @@ public class RepositoryController {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // GitHub 저장소 자동 가져오기 및 동기화
+    // GitHub 저장소 동기화
     // ─────────────────────────────────────────────────────────────────
 
-    @GetMapping("/github-available")
-    @Operation(summary = "사용자 GitHub 레포 목록 조회",
-            description = "인증된 사용자의 GitHub 계정에서 소유한 저장소 목록을 조회합니다. 파이프라인 생성 전에 레포를 선택할 때 사용됩니다.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "GitHub 레포 목록 조회 성공",
-                    content = @Content(schema = @Schema(implementation = GitHubUserRepositoriesResponse.class))),
-            @ApiResponse(responseCode = "401", description = "GitHub 인증 실패"),
-            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
-    })
-    public ResponseEntity<GitHubUserRepositoriesResponse> getAvailableGithubRepositories(
-            @Parameter(description = "프로젝트 ID", required = true)
-            @PathVariable Long projectId
-    ) {
-        projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
-
-        log.info("[Repository Controller] Fetching user's GitHub repositories for project {}", projectId);
-
-        var githubRepos = githubRepositoryService.getMyRepos();
-
-        var availableRepos = githubRepos.stream()
-                .map(repo -> new GitHubUserRepositoriesResponse.AvailableGithubRepository(
-                        repo.id(),
-                        repo.name(),
-                        repo.fullName(),
-                        repo.description(),
-                        repo.htmlUrl(),
-                        repo.isPrivate(),
-                        repo.language(),
-                        repo.stargazersCount(),
-                        repo.openIssuesCount()
-                ))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(new GitHubUserRepositoriesResponse(availableRepos, availableRepos.size()));
-    }
-
-    @PostMapping("/sync-from-github")
+    @PostMapping("/sync")
     @Operation(summary = "GitHub 레포 일괄 동기화",
             description = "사용자가 선택한 GitHub 저장소들을 프로젝트에 등록합니다. 각 레포에 직군(category)을 지정할 수 있습니다.")
     @ApiResponses(value = {
