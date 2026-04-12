@@ -71,6 +71,19 @@ public class JwtProvider {
     }
 
     /**
+     * Token에서 username 추출
+     */
+    public String getUsernameFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.get("username", String.class);
+    }
+
+    /**
      * Token 유효성 검증
      */
     public boolean validateToken(String token) {

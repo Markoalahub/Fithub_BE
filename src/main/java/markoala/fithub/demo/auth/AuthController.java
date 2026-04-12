@@ -62,7 +62,7 @@ public class AuthController {
         log.info("[Auth] Redirecting to GitHub OAuth");
 
         String githubAuthUrl = String.format(
-                "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=repo,user",
+                "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=repo,user,read:org",
                 githubClientId,
                 githubRedirectUri
         );

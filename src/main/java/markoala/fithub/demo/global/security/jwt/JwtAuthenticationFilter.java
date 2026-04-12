@@ -34,13 +34,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
 
             if (jwtProvider.validateToken(token)) {
+                String username = jwtProvider.getUsernameFromToken(token);
                 Long userId = jwtProvider.getUserIdFromToken(token);
-                log.debug("[JWT] Authenticated user: {}", userId);
+                log.debug("[JWT] Authenticated user: {} (ID: {})", username, userId);
 
                 // JWT 토큰 기반 인증 설정
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                userId,
+                                username,
                                 null,
                                 java.util.Collections.emptyList()
                         );

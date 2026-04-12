@@ -34,10 +34,12 @@ public class GithubRepositoryService {
         var auth = githubWebClientService.getAuthInfo();
         var webClient = githubWebClientService.getWebClient(auth.accessToken());
 
-        return webClient.get()
+        // 1. 사용자 소유 및 협력자 레포
+        List<GithubRepositoryDto> userRepos = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/user/repos")
                         .queryParam("per_page", "100")
+                        .queryParam("type", "owner,collaborator")
                         .queryParam("sort", "created")
                         .queryParam("direction", "desc")
                         .build())
@@ -45,6 +47,54 @@ public class GithubRepositoryService {
                 .bodyToFlux(GithubRepositoryDto.class)
                 .collectList()
                 .block();
+
+        // 2. 사용자가 속한 organization 목록
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> orgs = (List<Map<String, Object>>) (List<?>) webClient.get()
+                .uri("/user/orgs?per_page=100")
+                .retrieve()
+                .bodyToFlux(Map.class)
+                .collectList()
+                .block();
+
+        List<GithubRepositoryDto> orgRepos = new java.util.ArrayList<>();
+        if (orgs != null) {
+            for (Map<String, Object> org : orgs) {
+                String orgName = (String) org.get("login");
+                List<GithubRepositoryDto> repos = webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/orgs/{org}/repos")
+                                .queryParam("per_page", "100")
+                                .queryParam("sort", "created")
+                                .queryParam("direction", "desc")
+                                .build(orgName))
+                        .retrieve()
+                        .bodyToFlux(GithubRepositoryDto.class)
+                        .collectList()
+                        .block();
+                if (repos != null) {
+                    orgRepos.addAll(repos);
+                }
+            }
+        }
+
+        // 3. 중복 제거 후 합치기
+        List<GithubRepositoryDto> allRepos = new java.util.ArrayList<>(userRepos != null ? userRepos : new java.util.ArrayList<>());
+        if (orgRepos != null) {
+            allRepos.addAll(orgRepos);
+        }
+
+        // ID 기준으로 중복 제거
+        return allRepos.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        GithubRepositoryDto::id,
+                        repo -> repo,
+                        (existing, replacement) -> existing
+                ))
+                .values()
+                .stream()
+                .sorted((a, b) -> Long.compare(b.id(), a.id()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     /**
