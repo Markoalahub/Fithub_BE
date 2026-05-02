@@ -1,11 +1,13 @@
 package markoala.fithub.demo.application.service;
 
 import markoala.fithub.demo.application.client.PipelineV3Client;
+
 import markoala.fithub.demo.application.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.application.dto.request.PipelineStepUpdateRequest;
+import markoala.fithub.demo.application.dto.request.PipelineV3Request;
 import markoala.fithub.demo.application.dto.response.PipelineListResponse;
-import markoala.fithub.demo.application.dto.response.PipelineResponse;
-import markoala.fithub.demo.application.dto.response.PipelineStepResponse;
+import markoala.fithub.demo.application.dto.response.PipelineV3Response;
+import markoala.fithub.demo.application.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.issue.GithubRepository;
 import markoala.fithub.demo.issue.RepositoryRepository;
 import org.slf4j.Logger;
@@ -48,16 +50,13 @@ public class PipelineV3Service {
      * @param requirements 요구사항 텍스트 (필수)
      * @param category     카테고리 (선택, 기본값 "BE")
      * @param prdFile      PRD 파일 (선택)
-     * @return FastAPI 응답 PipelineResponse (v3 DTO)
+     * @return FastAPI 응답 PipelineV3Response (v3 DTO)
      */
-    public PipelineResponse generateV3Pipeline(Long projectId,
-                                               String requirements,
-                                               String category,
-                                               MultipartFile prdFile) {
-        log.info("[PipelineV3Service] Generating v3 pipeline — projectId={}, category={}", projectId, category);
+    public PipelineV3Response generateV3Pipeline(PipelineV3Request request) {
+        log.info("[PipelineV3Service] Generating v3 pipeline — projectId={}, category={}", 
+                request.projectId(), request.category());
 
-        PipelineResponse response = pipelineV3Client.generateV3Pipeline(
-                projectId, requirements, category, prdFile);
+        PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
 
         log.info("[PipelineV3Service] v3 pipeline generated — id={}, version={}, steps={}",
                 response.id(), response.version(),
@@ -71,49 +70,29 @@ public class PipelineV3Service {
     // ─────────────────────────────────────────────────────────────────
 
     /**
-     * 프로젝트에 등록된 모든 카테고리(FE/BE/AI 등)에 대해 v3 파이프라인 일괄 생성.
+     * 지정된 카테고리 목록(FE/BE/AI 등)에 대해 v3 파이프라인 일괄 생성.
      *
-     * @param projectId 프로젝트 ID
-     * @param prdFile   PRD 파일 (선택)
-     * @return 카테고리별로 생성된 PipelineResponse 목록
+     * @param projectId  프로젝트 ID
+     * @param categories 대상 카테고리 목록
+     * @param prdFile    PRD 파일 (선택)
+     * @return 카테고리별로 생성된 PipelineV3Response 목록
      */
-    public List<PipelineResponse> generateV3PipelinesForAllCategories(Long projectId,
-                                                                      MultipartFile prdFile) {
-        List<GithubRepository> repos = repositoryRepository.findByProjectId(projectId);
-
-        List<String> categories = repos.stream()
-                .map(GithubRepository::getCategory)
-                .filter(c -> c != null && !c.isBlank())
-                .distinct()
-                .collect(Collectors.toList());
-
-        if (categories.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "No categorized repositories found for project: " + projectId);
+    public List<PipelineV3Response> generateV3PipelinesForCategories(Long projectId,
+                                                                    String requirements,
+                                                                    String techStack,
+                                                                    List<String> categories,
+                                                                    MultipartFile file) {
+        if (categories == null || categories.isEmpty()) {
+            throw new IllegalArgumentException("대상 카테고리가 지정되지 않았습니다.");
         }
 
         log.info("[PipelineV3Service] Generating v3 pipelines for project {} — categories: {}", projectId, categories);
 
-        byte[] prdFileBytes = null;
-        String filename = null;
-        if (prdFile != null && !prdFile.isEmpty()) {
-            try {
-                prdFileBytes = prdFile.getBytes();
-                filename = prdFile.getOriginalFilename();
-            } catch (IOException e) {
-                log.error("[PipelineV3Service] Failed to read PRD file: {}", e.getMessage());
-                throw new RuntimeException("PRD 파일 읽기 실패", e);
-            }
-        }
-
-        final byte[] finalPrdBytes = prdFileBytes;
-        final String finalFilename = filename;
-
         return categories.stream()
                 .map(category -> {
                     log.info("[PipelineV3Service] Generating v3 pipeline for category: {}", category);
-                    return pipelineV3Client.generateV3Pipeline(
-                            projectId, "", category, finalPrdBytes, finalFilename);
+                    PipelineV3Request request = new PipelineV3Request(projectId, requirements, category, techStack, file);
+                    return pipelineV3Client.generateV3Pipeline(request);
                 })
                 .collect(Collectors.toList());
     }
@@ -133,7 +112,7 @@ public class PipelineV3Service {
     /**
      * 파이프라인에 스텝 추가.
      */
-    public PipelineStepResponse addStepToPipeline(Long pipelineId, PipelineStepCreateRequest request) {
+    public PipelineStepV3Response addStepToPipeline(Long pipelineId, PipelineStepCreateRequest request) {
         log.info("[PipelineV3Service] Adding step to pipeline {}", pipelineId);
         return pipelineV3Client.addPipelineStep(pipelineId, request);
     }
@@ -141,7 +120,7 @@ public class PipelineV3Service {
     /**
      * 파이프라인 스텝 수정.
      */
-    public PipelineStepResponse updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
+    public PipelineStepV3Response updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
         log.info("[PipelineV3Service] Updating pipeline step {}", stepId);
         return pipelineV3Client.updatePipelineStep(stepId, request);
     }

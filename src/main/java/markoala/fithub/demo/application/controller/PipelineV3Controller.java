@@ -8,7 +8,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import markoala.fithub.demo.application.dto.response.PipelineListResponse;
-import markoala.fithub.demo.application.dto.response.PipelineResponse;
+import markoala.fithub.demo.application.dto.response.PipelineV3Response;
+import markoala.fithub.demo.application.dto.request.PipelineV3Request;
 import markoala.fithub.demo.application.service.PipelineV3Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -46,25 +47,28 @@ public class PipelineV3Controller {
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "파이프라인 생성 성공",
-                    content = @Content(schema = @Schema(implementation = PipelineResponse.class))),
+                    content = @Content(schema = @Schema(implementation = PipelineV3Response.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (project_id 또는 requirements 누락)"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
-    public ResponseEntity<PipelineResponse> generateV3Pipeline(
+    public ResponseEntity<PipelineV3Response> generateV3Pipeline(
             @Parameter(description = "프로젝트 ID", required = true)
-            @RequestParam("projectId") Long projectId,
+            @RequestParam("project_id") Long projectId,
 
             @Parameter(description = "요구사항 텍스트", required = true)
             @RequestParam("requirements") String requirements,
 
-            @Parameter(description = "카테고리 (기본값: BE)")
-            @RequestParam(value = "category", required = false, defaultValue = "BE") String category,
+            @Parameter(description = "카테고리 (기본값: ALL)")
+            @RequestParam(value = "category", required = false, defaultValue = "ALL") String category,
+
+            @Parameter(description = "기술 스택 (선택, 예: Spring Boot, JPA)")
+            @RequestParam(value = "tech_stack", required = false) String techStack,
 
             @Parameter(description = "PRD 파일 (선택)")
-            @RequestPart(value = "prdFile", required = false) MultipartFile prdFile
+            @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        PipelineResponse response = pipelineV3Service.generateV3Pipeline(
-                projectId, requirements, category, prdFile);
+        PipelineV3Request request = new PipelineV3Request(projectId, requirements, category, techStack, file);
+        PipelineV3Response response = pipelineV3Service.generateV3Pipeline(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -74,22 +78,32 @@ public class PipelineV3Controller {
 
     @PostMapping(value = "/generate-all", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
-            summary = "v3 전체 카테고리 파이프라인 일괄 생성",
-            description = "프로젝트에 등록된 모든 저장소의 카테고리(FE/BE/AI 등)별로 v3 파이프라인을 자동 생성합니다."
+            summary = "v3 선택 카테고리 파이프라인 일괄 생성",
+            description = "전달받은 카테고리 목록(BE, FE 등)별로 v3 파이프라인을 자동 생성합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "전체 카테고리 파이프라인 생성 성공"),
-            @ApiResponse(responseCode = "400", description = "카테고리가 설정된 저장소 없음"),
+            @ApiResponse(responseCode = "201", description = "선택한 카테고리 파이프라인 생성 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
-    public ResponseEntity<List<PipelineResponse>> generateAllV3Pipelines(
+    public ResponseEntity<List<PipelineV3Response>> generateAllV3Pipelines(
             @Parameter(description = "프로젝트 ID", required = true)
-            @RequestParam Long projectId,
+            @RequestParam("project_id") Long projectId,
+
+            @Parameter(description = "요구사항 텍스트", required = true)
+            @RequestParam("requirements") String requirements,
+
+            @Parameter(description = "기술 스택 (선택, 예: Spring Boot, JPA)")
+            @RequestParam(value = "tech_stack", required = false) String techStack,
+
+            @Parameter(description = "대상 카테고리 목록 (예: BE, FE)", required = true)
+            @RequestParam List<String> categories,
 
             @Parameter(description = "PRD 파일 (선택)")
-            @RequestPart(value = "prdFile", required = false) MultipartFile prdFile
+            @RequestPart(value = "file", required = false) MultipartFile file
     ) {
-        List<PipelineResponse> responses = pipelineV3Service.generateV3PipelinesForAllCategories(projectId, prdFile);
+        List<PipelineV3Response> responses = pipelineV3Service.generateV3PipelinesForCategories(
+                projectId, requirements, techStack, categories, file);
         return ResponseEntity.status(HttpStatus.CREATED).body(responses);
     }
 
