@@ -1,11 +1,14 @@
 package markoala.fithub.demo.application.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import java.util.Optional;
 
 public record PipelineStepUpdateRequest(
         @JsonProperty("step_task_description")
         Optional<String> stepTaskDescription,
+        @JsonProperty("step_details")
+        Optional<List<String>> stepDetails,
         @JsonProperty("step_sequence_number")
         Optional<Integer> stepSequenceNumber,
         @JsonProperty("step_github_status")
