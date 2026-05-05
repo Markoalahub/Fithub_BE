@@ -225,4 +225,12 @@ public class PipelineV3Service {
         log.info("[PipelineV3Service] Deleting pipeline step {}", stepId);
         pipelineV3Client.deletePipelineStep(stepId);
     }
+
+    /**
+     * Ouroboros 사전 인터뷰 프록시
+     */
+    public markoala.fithub.demo.application.dto.response.InterviewResponse ouroborosInterview(markoala.fithub.demo.application.dto.request.InterviewRequest requestBody) {
+        log.info("[PipelineV3Service] Proxying interview request to FastAPI");
+        return pipelineV3Client.ouroborosInterview(requestBody);
+    }
 }
