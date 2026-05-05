@@ -163,6 +163,14 @@ public class PipelineV3Service {
     }
 
     /**
+     * 회의 정보를 기반으로 파이프라인 스텝 최종 승인 처리.
+     */
+    public PipelineStepV3Response confirmPipelineStep(Long stepId, markoala.fithub.demo.application.dto.request.MeetingStepConfirmationRequest request) {
+        log.info("[PipelineV3Service] Confirming pipeline step {} via meeting {}", stepId, request.meetingId());
+        return pipelineV3Client.confirmPipelineStep(stepId, request);
+    }
+
+    /**
      * 파이프라인 단건 조회.
      */
     public PipelineV3Response getPipeline(Long pipelineId) {

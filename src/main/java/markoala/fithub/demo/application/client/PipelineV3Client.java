@@ -100,6 +100,18 @@ public class PipelineV3Client {
                 .retrieve()
                 .body(PipelineStepV3Response.class);
     }
+
+    /**
+     * 파이프라인 스텝 최종 승인 (회의 정보 기반)
+     */
+    public PipelineStepV3Response confirmPipelineStep(Long stepId, markoala.fithub.demo.application.dto.request.MeetingStepConfirmationRequest request) {
+        return restClient.patch()
+                .uri("/pipelines/steps/{stepId}/confirm", stepId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(PipelineStepV3Response.class);
+    }
     /**
      * 파이프라인 단건 조회
      */

@@ -20,6 +20,8 @@ public record PipelineStepV3Response(
     @JsonProperty("depends_on") List<Integer> dependsOn, // 선행 sequence 리스트
     
     @JsonProperty("step_sequence_number") Integer stepSequenceNumber,
+    @JsonProperty("step_planner_confirm_yn") String stepPlannerConfirmYn, // "Pending" | "Approved"
+    @JsonProperty("step_developer_confirm_yn") String stepDeveloperConfirmYn, // "Pending" | "Approved"
     @JsonProperty("deadline_date") LocalDate deadlineDate,
     @JsonProperty("deadline_time") LocalTime deadlineTime
 ) {}

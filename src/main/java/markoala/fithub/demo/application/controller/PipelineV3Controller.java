@@ -198,23 +198,12 @@ public class PipelineV3Controller {
         return ResponseEntity.noContent().build();
     }
     @PatchMapping("/steps/{stepId}/confirm")
-    @Operation(summary = "파이프라인 스텝 승인", description = "회의 중 기획자와 개발자가 해당 스텝을 승인합니다. 승인 후에는 스텝의 내용을 자유롭게 수정할 수 있습니다.")
+    @Operation(summary = "파이프라인 스텝 승인", description = "특정 회의(meetingId) 내에서 기획자와 개발자가 모두 승인했는지 확인하여 해당 스텝을 최종 승인(Approved) 처리합니다.")
     public ResponseEntity<PipelineStepV3Response> confirmPipelineStep(
             @PathVariable Long stepId,
             @RequestBody MeetingStepConfirmationRequest request
     ) {
-        PipelineStepUpdateRequest updateRequest = new PipelineStepUpdateRequest(
-                Optional.empty(), // stepTaskDescription
-                Optional.empty(), // stepDetails
-                Optional.empty(), // stepSequenceNumber
-                Optional.empty(), // stepGithubStatus
-                Optional.of(request.plannerConfirmYn()), 
-                Optional.of(request.developerConfirmYn()),
-                Optional.empty(), // duration
-                Optional.empty(), // techStack
-                Optional.empty()  // origin
-        );
-        return ResponseEntity.ok(pipelineV3Service.updatePipelineStep(stepId, updateRequest));
+        return ResponseEntity.ok(pipelineV3Service.confirmPipelineStep(stepId, request));
     }
 
     @GetMapping("/project/{projectId}/overview")
