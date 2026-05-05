@@ -32,11 +32,48 @@ public class PipelineV3Service {
 
     private final PipelineV3Client pipelineV3Client;
     private final RepositoryRepository repositoryRepository;
+    private final markoala.fithub.demo.issue.IssueRepository issueRepository;
+    private final markoala.fithub.demo.issue.GitHubIssueService gitHubIssueService;
+    private final markoala.fithub.demo.global.security.jwt.JwtProvider jwtProvider;
+    private final markoala.fithub.demo.user.UserService userService;
+    private final markoala.fithub.demo.project.ProjectRepository projectRepository;
 
     public PipelineV3Service(PipelineV3Client pipelineV3Client,
-                             RepositoryRepository repositoryRepository) {
+                             RepositoryRepository repositoryRepository,
+                             markoala.fithub.demo.issue.IssueRepository issueRepository,
+                             markoala.fithub.demo.issue.GitHubIssueService gitHubIssueService,
+                             markoala.fithub.demo.global.security.jwt.JwtProvider jwtProvider,
+                             markoala.fithub.demo.user.UserService userService,
+                             markoala.fithub.demo.project.ProjectRepository projectRepository) {
         this.pipelineV3Client = pipelineV3Client;
         this.repositoryRepository = repositoryRepository;
+        this.issueRepository = issueRepository;
+        this.gitHubIssueService = gitHubIssueService;
+        this.jwtProvider = jwtProvider;
+        this.userService = userService;
+        this.projectRepository = projectRepository;
+    }
+
+    /**
+     * 프로젝트 정보와 파이프라인 정보를 결합하여 반환 (API Composition)
+     */
+    public markoala.fithub.demo.application.dto.response.ProjectPipelineOverviewResponse getProjectPipelineOverview(Long projectId) {
+        log.info("[PipelineV3Service] Composing project-pipeline overview for project {}", projectId);
+        
+        // 1. Spring DB에서 프로젝트 정보 조회
+        markoala.fithub.demo.project.Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+
+        // 2. FastAPI에서 파이프라인 정보 조회
+        PipelineListResponse pipelineList = pipelineV3Client.getPipelinesByProject(projectId);
+
+        // 3. 데이터 결합
+        return new markoala.fithub.demo.application.dto.response.ProjectPipelineOverviewResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                pipelineList.pipelines()
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -123,5 +160,61 @@ public class PipelineV3Service {
     public PipelineStepV3Response updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
         log.info("[PipelineV3Service] Updating pipeline step {}", stepId);
         return pipelineV3Client.updatePipelineStep(stepId, request);
+    }
+
+    /**
+     * 파이프라인 단건 조회.
+     */
+    public PipelineV3Response getPipeline(Long pipelineId) {
+        log.info("[PipelineV3Service] Fetching pipeline {}", pipelineId);
+        return pipelineV3Client.getPipeline(pipelineId);
+    }
+
+    /**
+     * 파이프라인 삭제.
+     */
+    public void deletePipeline(Long pipelineId) {
+        log.info("[PipelineV3Service] Deleting pipeline {}", pipelineId);
+        pipelineV3Client.deletePipeline(pipelineId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 파이프라인 스텝 → Issue 변환 및 동기화
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * v3 파이프라인 스텝을 Issue로 변환 + GitHub 동기화
+     */
+    public markoala.fithub.demo.issue.Issue createIssueFromPipelineStepAndSync(Long pipelineStepId, Long repositoryId, String title, String description, String repoUrl, String authHeader) {
+        log.info("[PipelineV3Service] Creating issue and syncing to GitHub: {}", title);
+
+        // 1. Issue 생성 (DB)
+        markoala.fithub.demo.issue.Issue issue = markoala.fithub.demo.issue.Issue.createIssue(repositoryId, null, title, description, "PENDING");
+        issue.setPipelineStepId(pipelineStepId.intValue());
+        markoala.fithub.demo.issue.Issue savedIssue = issueRepository.save(issue);
+
+        // 2. GitHub에 동기화
+        try {
+            String token = authHeader.substring(7); // "Bearer " 제거
+            Long userId = jwtProvider.getUserIdFromToken(token);
+            markoala.fithub.demo.user.User user = userService.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+            String githubAccessToken = user.getGithubAccessToken();
+
+            gitHubIssueService.syncIssueToGitHub(savedIssue, repoUrl, githubAccessToken);
+            log.info("[PipelineV3Service] Issue {} synced to GitHub", savedIssue.getId());
+        } catch (Exception e) {
+            log.error("[PipelineV3Service] Failed to sync issue to GitHub: {}", e.getMessage());
+        }
+
+        return savedIssue;
+    }
+ 
+    /**
+     * 파이프라인 스텝 삭제.
+     */
+    public void deletePipelineStep(Long stepId) {
+        log.info("[PipelineV3Service] Deleting pipeline step {}", stepId);
+        pipelineV3Client.deletePipelineStep(stepId);
     }
 }

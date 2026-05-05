@@ -100,4 +100,33 @@ public class PipelineV3Client {
                 .retrieve()
                 .body(PipelineStepV3Response.class);
     }
+    /**
+     * 파이프라인 단건 조회
+     */
+    public PipelineV3Response getPipeline(Long pipelineId) {
+        return restClient.get()
+                .uri("/pipelines/{pipelineId}", pipelineId)
+                .retrieve()
+                .body(PipelineV3Response.class);
+    }
+
+    /**
+     * 파이프라인 삭제
+     */
+    public void deletePipeline(Long pipelineId) {
+        restClient.delete()
+                .uri("/pipelines/{pipelineId}", pipelineId)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /**
+     * 파이프라인 스텝 삭제
+     */
+    public void deletePipelineStep(Long stepId) {
+        restClient.delete()
+                .uri("/pipelines/steps/{stepId}", stepId)
+                .retrieve()
+                .toBodilessEntity();
+    }
 }
