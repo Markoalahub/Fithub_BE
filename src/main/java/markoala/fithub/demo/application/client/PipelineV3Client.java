@@ -145,12 +145,12 @@ public class PipelineV3Client {
     /**
      * Ouroboros 사전 인터뷰 프록시
      */
-    public Object ouroborosInterview(Object requestBody) {
+    public markoala.fithub.demo.application.dto.response.InterviewResponse ouroborosInterview(markoala.fithub.demo.application.dto.request.InterviewRequest requestBody) {
         return restClient.post()
                 .uri("/pipelines/interview")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestBody)
                 .retrieve()
-                .body(Object.class);
+                .body(markoala.fithub.demo.application.dto.response.InterviewResponse.class);
     }
 }

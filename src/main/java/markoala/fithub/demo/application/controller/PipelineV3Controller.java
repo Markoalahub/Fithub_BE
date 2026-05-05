@@ -216,7 +216,9 @@ public class PipelineV3Controller {
 
     @PostMapping("/interview")
     @Operation(summary = "Ouroboros 인터뷰 프록시", description = "FastAPI의 /pipelines/interview로 요청을 넘깁니다.")
-    public ResponseEntity<Object> ouroborosInterview(@RequestBody Object request) {
+    public ResponseEntity<markoala.fithub.demo.application.dto.response.InterviewResponse> ouroborosInterview(
+            @RequestBody markoala.fithub.demo.application.dto.request.InterviewRequest request
+    ) {
         return ResponseEntity.ok(pipelineV3Service.ouroborosInterview(request));
     }
 }

@@ -229,7 +229,7 @@ public class PipelineV3Service {
     /**
      * Ouroboros 사전 인터뷰 프록시
      */
-    public Object ouroborosInterview(Object requestBody) {
+    public markoala.fithub.demo.application.dto.response.InterviewResponse ouroborosInterview(markoala.fithub.demo.application.dto.request.InterviewRequest requestBody) {
         log.info("[PipelineV3Service] Proxying interview request to FastAPI");
         return pipelineV3Client.ouroborosInterview(requestBody);
     }
