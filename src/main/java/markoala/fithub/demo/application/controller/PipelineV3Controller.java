@@ -213,4 +213,10 @@ public class PipelineV3Controller {
     ) {
         return ResponseEntity.ok(pipelineV3Service.getProjectPipelineOverview(projectId));
     }
+
+    @PostMapping("/interview")
+    @Operation(summary = "Ouroboros 인터뷰 프록시", description = "FastAPI의 /pipelines/interview로 요청을 넘깁니다.")
+    public ResponseEntity<Object> ouroborosInterview(@RequestBody Object request) {
+        return ResponseEntity.ok(pipelineV3Service.ouroborosInterview(request));
+    }
 }

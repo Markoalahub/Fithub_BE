@@ -51,15 +51,23 @@ public class MeetingService {
      * - FastAPI에 회의록 생성 요청 (attendeeUserIds 포함)
      */
     public MeetingLogResponse createMeeting(Long projectId, String content,
-                                             Long proposerId, Long recipientId) {
+                                             Long proposerId, Long recipientId,
+                                             String conversationType, java.util.Map<String, Object> translationHistory) {
         projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
 
-        validateProjectMember(projectId, proposerId, "proposer");
-        validateProjectMember(projectId, recipientId, "recipient");
+        java.util.List<Long> attendeeIds = new java.util.ArrayList<>();
+        if (proposerId != null) {
+            validateProjectMember(projectId, proposerId, "proposer");
+            attendeeIds.add(proposerId);
+        }
+        if (recipientId != null) {
+            validateProjectMember(projectId, recipientId, "recipient");
+            attendeeIds.add(recipientId);
+        }
 
-        List<Long> attendeeIds = List.of(proposerId, recipientId);
-        MeetingLogCreateRequest request = new MeetingLogCreateRequest(projectId, content, attendeeIds);
+        MeetingLogCreateRequest request = new MeetingLogCreateRequest(
+                projectId, content, attendeeIds.isEmpty() ? null : attendeeIds, conversationType, translationHistory);
 
         MeetingLogResponse response = meetingClient.createMeetingLog(request);
         log.info("[Meeting Service] Meeting created: id={}, project={}", response.id(), projectId);
@@ -168,7 +176,7 @@ public class MeetingService {
     public MeetingLogResponse updateMeeting(Long meetingId, String content) {
         log.info("[Meeting Service] Updating meeting {}", meetingId);
         // 필드가 content만 있는 경우 기존 CreateRequest 재사용 가능 (필요 시 전용 DTO 생성)
-        MeetingLogCreateRequest request = new MeetingLogCreateRequest(null, content, null);
+        MeetingLogCreateRequest request = new MeetingLogCreateRequest(null, content, null, null, null);
         return meetingClient.updateMeetingLog(meetingId, request);
     }
 

@@ -218,11 +218,16 @@ public class PipelineV3Service {
         return savedIssue;
     }
  
-    /**
-     * 파이프라인 스텝 삭제.
-     */
     public void deletePipelineStep(Long stepId) {
         log.info("[PipelineV3Service] Deleting pipeline step {}", stepId);
         pipelineV3Client.deletePipelineStep(stepId);
+    }
+
+    /**
+     * Ouroboros 사전 인터뷰 프록시
+     */
+    public Object ouroborosInterview(Object requestBody) {
+        log.info("[PipelineV3Service] Proxying interview request to FastAPI");
+        return pipelineV3Client.ouroborosInterview(requestBody);
     }
 }

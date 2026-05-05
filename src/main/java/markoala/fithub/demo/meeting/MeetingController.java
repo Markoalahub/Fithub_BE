@@ -51,7 +51,8 @@ public class MeetingController {
             @Valid @RequestBody MeetingCreateRequest request
     ) {
         MeetingLogResponse response = meetingService.createMeeting(
-                request.projectId(), request.content(), request.proposerId(), request.recipientId());
+                request.projectId(), request.content(), request.proposerId(), request.recipientId(),
+                request.conversationType(), request.translationHistory());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
