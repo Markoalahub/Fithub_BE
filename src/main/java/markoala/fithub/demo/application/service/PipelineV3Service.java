@@ -218,6 +218,9 @@ public class PipelineV3Service {
         return savedIssue;
     }
  
+    /**
+     * 파이프라인 스텝 삭제.
+     */
     public void deletePipelineStep(Long stepId) {
         log.info("[PipelineV3Service] Deleting pipeline step {}", stepId);
         pipelineV3Client.deletePipelineStep(stepId);
