@@ -38,6 +38,11 @@ out/
 
 ### Application Secrets ###
 src/main/resources/application.yml
+src/main/resources/application.yaml
+
+### H2 Database ###
+*.mv.db
+data/*.mv.db
 
 ### macOS ###
 .DS_Store
