@@ -11,5 +11,12 @@ public record PipelineResponse(
         Long version,
         @JsonProperty("is_active")
         Boolean isActive,
-        List<PipelineStepResponse> steps
-) {}
+        List<PipelineStepResponse> steps,
+        @JsonProperty("user_flow")
+        UserFlowResponse userFlow
+) {
+    // Backward compatible constructor
+    public PipelineResponse(Long id, Long projectId, String category, Long version, Boolean isActive, List<PipelineStepResponse> steps) {
+        this(id, projectId, category, version, isActive, steps, null);
+    }
+}

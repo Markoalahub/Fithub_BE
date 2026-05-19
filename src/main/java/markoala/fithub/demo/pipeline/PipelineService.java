@@ -45,8 +45,7 @@ public class PipelineService {
             IssueSyncRepository issueSyncRepository,
             RepositoryRepository repositoryRepository,
             JwtProvider jwtProvider,
-            UserService userService
-    ) {
+            UserService userService) {
         this.pipelineClient = pipelineClient;
         this.gitHubIssueService = gitHubIssueService;
         this.issueRepository = issueRepository;
@@ -78,7 +77,8 @@ public class PipelineService {
         List<PipelineResponse> pipelines = categories.stream()
                 .map(category -> {
                     log.info("[Pipeline Service] Generating pipeline for category: {}", category);
-                    PipelineResponse response = pipelineClient.generateAndSavePipeline(projectId, category, null, pdfBytes);
+                    PipelineResponse response = pipelineClient.generateAndSavePipeline(projectId, category, null,
+                            pdfBytes);
                     return response;
                 })
                 .collect(Collectors.toList());
@@ -91,17 +91,19 @@ public class PipelineService {
      */
     public PipelineResponse generatePipeline(Long projectId, String requirements, String category) {
         log.info("[Pipeline Service] Generating pipeline for project {} with category: {}", projectId, category);
-        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, category, requirements, null);
+        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, category, requirements,
+                null);
         log.info("[Pipeline Service] Pipeline generated with {} steps", pipelineResponse.steps().size());
         return pipelineResponse;
     }
 
     /**
      * 파이프라인 스텝을 Issue로 변환 (사용자 선택 시)
+     * 
      * @param pipelineStepId FastAPI의 pipeline_step ID
-     * @param repositoryId Spring의 repository ID
-     * @param title Issue 제목
-     * @param description Issue 설명
+     * @param repositoryId   Spring의 repository ID
+     * @param title          Issue 제목
+     * @param description    Issue 설명
      */
     public Issue createIssueFromPipelineStep(Long pipelineStepId, Long repositoryId, String title, String description) {
         log.info("[Pipeline Service] Creating issue from pipeline step {}: {}", pipelineStepId, title);
@@ -113,7 +115,8 @@ public class PipelineService {
     /**
      * 파이프라인 스텝을 Issue로 변환 + GitHub 동기화
      */
-    public Issue createIssueFromPipelineStepAndSync(Long pipelineStepId, Long repositoryId, String title, String description, String repoUrl, String authHeader) {
+    public Issue createIssueFromPipelineStepAndSync(Long pipelineStepId, Long repositoryId, String title,
+            String description, String repoUrl, String authHeader) {
         log.info("[Pipeline Service] Creating issue and syncing to GitHub: {}", title);
 
         // 1. Issue 생성 (DB)
@@ -152,7 +155,8 @@ public class PipelineService {
 
     /**
      * 파이프라인 스텝 수정 (title, description, is_completed)
-     * @param stepId FastAPI의 pipeline_step ID
+     * 
+     * @param stepId  FastAPI의 pipeline_step ID
      * @param request 수정할 데이터
      */
     public PipelineStepResponse updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
@@ -178,5 +182,26 @@ public class PipelineService {
                     return sync;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public Object generateUserFlow(Long projectId, String requirements, String techStack, byte[] pdfBytes) {
+        log.info("[Pipeline Service] Starting user flow session for project {}", projectId);
+        return pipelineClient.generateUserFlow(projectId, requirements, techStack, pdfBytes);
+    }
+
+    public Object answerUserFlowSession(Long flowId, String answer, Boolean confirm) {
+        log.info("[Pipeline Service] Submitting answer for user flow session {}", flowId);
+        return pipelineClient.answerUserFlowSession(flowId, answer, confirm);
+    }
+
+    public Object generateWireframe(Long userFlowId) {
+        log.info("[Pipeline Service] Generating wireframe for user flow {}", userFlowId);
+        return pipelineClient.generateWireframe(userFlowId);
+    }
+
+    public Object generatePipelineFromFlow(Long userFlowId, Long projectId, String category) {
+        log.info("[Pipeline Service] Generating development pipeline from flow {} for project {}", userFlowId,
+                projectId);
+        return pipelineClient.generatePipelineFromFlow(userFlowId, projectId, category);
     }
 }

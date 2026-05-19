@@ -190,4 +190,60 @@ public class PipelineController {
         var result = pipelineService.syncPipelineToGitHub(pipelineId, request.repositoryId(), request.accessToken());
         return ResponseEntity.ok(result);
     }
+
+    @PostMapping(value = "/generate-userflow", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+        summary = "Stage 1: 유저 플로우 세션 시작 (PRD 및 PDF 기반)",
+        description = "요구사항 또는 업로드한 PDF 기획서를 활용해 AI 유저플로우 생성 및 turn-based 인터뷰 세션을 시작합니다."
+    )
+    public ResponseEntity<Object> generateUserFlow(
+            @RequestParam Long projectId,
+            @RequestParam String requirements,
+            @RequestParam(required = false, defaultValue = "Spring Boot, React") String techStack,
+            @RequestPart(value = "prdFile", required = false) MultipartFile prdFile
+    ) throws IOException {
+        byte[] pdfBytes = (prdFile != null && !prdFile.isEmpty()) ? prdFile.getBytes() : null;
+        Object response = pipelineService.generateUserFlow(projectId, requirements, techStack, pdfBytes);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/userflow-session/{flowId}/answer")
+    @Operation(
+        summary = "Stage 1 (계속): 기획자 인터뷰 답변 전송",
+        description = "기획자의 질문 답변을 인쇄/전송하여 추가 질문을 받거나, confirm=true 옵션으로 유저 플로우를 강제 확정합니다."
+    )
+    public ResponseEntity<Object> answerUserFlowSession(
+            @PathVariable Long flowId,
+            @RequestParam String answer,
+            @RequestParam(required = false, defaultValue = "false") Boolean confirm
+    ) {
+        Object response = pipelineService.answerUserFlowSession(flowId, answer, confirm);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/generate-wireframe")
+    @Operation(
+        summary = "Stage 2: 유저 플로우 -> 와이어프레임 생성",
+        description = "확정된 유저 플로우의 각 화면 노드에 대해 ASCII lo-fi UI 와이어프레임을 생성하여 저장합니다."
+    )
+    public ResponseEntity<Object> generateWireframe(
+            @RequestParam Long userFlowId
+    ) {
+        Object response = pipelineService.generateWireframe(userFlowId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/generate-pipeline-from-flow")
+    @Operation(
+        summary = "Stage 3: 유저플로우/와이어프레임 기반 개발 파이프라인 생성",
+        description = "완성된 유저플로우와 와이어프레임을 기반으로 화면 단위와 매핑된 BE/FE 버티컬 슬라이스 파이프라인 태스크를 도출합니다."
+    )
+    public ResponseEntity<Object> generatePipelineFromFlow(
+            @RequestParam Long userFlowId,
+            @RequestParam Long projectId,
+            @RequestParam String category
+    ) {
+        Object response = pipelineService.generatePipelineFromFlow(userFlowId, projectId, category);
+        return ResponseEntity.ok(response);
+    }
 }
