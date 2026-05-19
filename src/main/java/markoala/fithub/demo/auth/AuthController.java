@@ -33,6 +33,7 @@ public class AuthController {
     private final GithubRepositoryService githubRepositoryService;
     private final UserService userService;
     private final JwtProvider jwtProvider;
+    private final KakaoService kakaoService;
 
     @Value("${github.client-id}")
     private String githubClientId;
@@ -43,14 +44,22 @@ public class AuthController {
     @Value("${github.redirect-uri}")
     private String githubRedirectUri;
 
+    @Value("${kakao.client-id}")
+    private String kakaoClientId;
+
+    @Value("${kakao.redirect-uri}")
+    private String kakaoRedirectUri;
+
     public AuthController(
             GithubRepositoryService githubRepositoryService,
             UserService userService,
-            JwtProvider jwtProvider
+            JwtProvider jwtProvider,
+            KakaoService kakaoService
     ) {
         this.githubRepositoryService = githubRepositoryService;
         this.userService = userService;
         this.jwtProvider = jwtProvider;
+        this.kakaoService = kakaoService;
     }
 
     @GetMapping("/login")
@@ -120,6 +129,105 @@ public class AuthController {
 
         log.info("[Auth] OAuth callback completed. Tokens issued for user: {}", user.getId());
 
+        return response;
+    }
+
+    @GetMapping("/kakao/login")
+    @Operation(
+            summary = "Kakao OAuth 로그인",
+            description = "Kakao OAuth 인증 페이지로 자동 리다이렉트합니다"
+    )
+    public String kakaoLogin() {
+        log.info("[Auth] Redirecting to Kakao OAuth");
+
+        String kakaoAuthUrl = String.format(
+                "https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code",
+                kakaoClientId,
+                kakaoRedirectUri
+        );
+
+        return "redirect:" + kakaoAuthUrl;
+    }
+
+    @GetMapping("/kakao/callback")
+    @ResponseBody
+    @Operation(
+            summary = "Kakao OAuth 콜백",
+            description = "Kakao에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰, Kakao Access Token을 발급합니다"
+    )
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> kakaoCallback(
+            @Parameter(description = "Kakao OAuth 인증 코드", required = true)
+            @RequestParam String code
+    ) throws IOException {
+        log.info("[Auth] Processing Kakao callback with code: {}", code);
+
+        // 1. code -> Kakao access token 교환
+        String kakaoAccessToken = kakaoService.exchangeCodeForToken(code);
+        log.info("[Auth] Kakao access token acquired");
+
+        // 2. Kakao 사용자 정보 조회
+        Map<String, Object> userInfo = kakaoService.getUserInfoFromKakao(kakaoAccessToken);
+        Long kakaoId = ((Number) userInfo.get("id")).longValue();
+
+        Map<String, Object> properties = (Map<String, Object>) userInfo.get("properties");
+        String nickname = properties != null ? (String) properties.get("nickname") : "KakaoUser_" + kakaoId;
+
+        Map<String, Object> kakaoAccount = (Map<String, Object>) userInfo.get("kakao_account");
+        String email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;
+
+        log.info("[Auth] Kakao user info: nickname={}, email={}", nickname, email);
+
+        // 3. DB에 사용자 저장 또는 업데이트
+        User user = userService.findOrCreateKakaoUser(nickname, email, kakaoId, kakaoAccessToken);
+        log.info("[Auth] User saved/updated: id={}, username={}", user.getId(), user.getUsername());
+
+        // 4. JWT 토큰 발급
+        String accessToken = jwtProvider.generateAccessToken(user);
+        String refreshToken = jwtProvider.generateRefreshToken(user);
+
+        log.info("[Auth] JWT tokens generated for user: {}", user.getId());
+
+        // 5. 토큰 정보를 JSON으로 응답
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("accessToken", accessToken);
+        response.put("refreshToken", refreshToken);
+        response.put("kakaoAccessToken", kakaoAccessToken);
+        response.put("user", Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "email", user.getEmail()
+        ));
+
+        log.info("[Auth] Kakao OAuth callback completed. Tokens issued for user: {}", user.getId());
+
+        return response;
+    }
+
+    @GetMapping("/token")
+    @ResponseBody
+    @Operation(
+            summary = "세션에 발급된 JWT 토큰 조회",
+            description = "OAuth2 성공 후 세션에 임시 저장된 JWT 토큰을 화면에 JSON으로 반환합니다."
+    )
+    public Map<String, Object> getSessionToken(jakarta.servlet.http.HttpSession session) {
+        String token = (String) session.getAttribute("jwt_token");
+        Long userId = (Long) session.getAttribute("user_id");
+        String username = (String) session.getAttribute("username");
+
+        Map<String, Object> response = new java.util.HashMap<>();
+        if (token != null) {
+            response.put("success", true);
+            response.put("accessToken", token);
+            response.put("user", Map.of(
+                    "id", userId != null ? userId : "",
+                    "username", username != null ? username : ""
+            ));
+        } else {
+            response.put("success", false);
+            response.put("message", "No token found in session. Please login first.");
+        }
         return response;
     }
 }
