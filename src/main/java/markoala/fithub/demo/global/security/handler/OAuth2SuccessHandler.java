@@ -109,6 +109,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             session.setAttribute(SESSION_KEY_TOKEN, token);
             session.setAttribute(SESSION_KEY_USER_ID, user.getId());
             session.setAttribute(SESSION_KEY_USERNAME, user.getUsername());
+            session.setAttribute("job_role", user.getJobRole() != null ? user.getJobRole().name() : "");
 
             log.info("[OAuth2SuccessHandler] Session JWT successfully created and stored. Redirecting to /api/v1/auth/token");
             getRedirectStrategy().sendRedirect(request, response, "/api/v1/auth/token");

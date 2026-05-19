@@ -123,4 +123,12 @@ public class UserService implements UserDetailsService {
     public User save(User user) {
         return userRepository.save(user);
     }
+
+    @Transactional
+    public User updateJobRole(Long id, JobRole jobRole) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found for id: " + id));
+        user.updateJobRole(jobRole);
+        return userRepository.save(user);
+    }
 }
