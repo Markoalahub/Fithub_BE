@@ -48,6 +48,79 @@ public class PipelineClient {
                 .body(PipelineResponse.class);
     }
 
+    /**
+     * Stage 1: FastAPI에 유저 플로우 세션 시작 요청 (PDF 지원)
+     */
+    public Object generateUserFlow(Long projectId, String requirements, String techStack, byte[] pdfBytes) {
+        MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+        formData.add("project_id", projectId);
+        formData.add("requirements", requirements);
+        formData.add("tech_stack", techStack != null ? techStack : "Spring Boot, React");
+        if (pdfBytes != null && pdfBytes.length > 0) {
+            formData.add("file", new ByteArrayResource(pdfBytes) {
+                @Override
+                public String getFilename() {
+                    return "prd.pdf";
+                }
+            });
+        }
+
+        return restClient.post()
+                .uri("/pipelines/generate-userflow")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(formData)
+                .retrieve()
+                .body(Object.class);
+    }
+
+    /**
+     * Stage 1 (계속): 기획자 답변 전달 및 확정 요청
+     */
+    public Object answerUserFlowSession(Long flowId, String answer, Boolean confirm) {
+        MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+        formData.add("answer", answer);
+        formData.add("confirm", confirm != null ? confirm.toString() : "false");
+
+        return restClient.post()
+                .uri("/pipelines/userflow-session/{flowId}/answer", flowId)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(formData)
+                .retrieve()
+                .body(Object.class);
+    }
+
+    /**
+     * Stage 2: 유저 플로우 -> ASCII 와이어프레임 생성
+     */
+    public Object generateWireframe(Long userFlowId) {
+        MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+        formData.add("user_flow_id", userFlowId);
+
+        return restClient.post()
+                .uri("/pipelines/generate-wireframe")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(formData)
+                .retrieve()
+                .body(Object.class);
+    }
+
+    /**
+     * Stage 3: 유저 플로우 + 와이어프레임 -> 개발 파이프라인 생성
+     */
+    public Object generatePipelineFromFlow(Long userFlowId, Long projectId, String category) {
+        MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+        formData.add("user_flow_id", userFlowId);
+        formData.add("project_id", projectId);
+        formData.add("category", category);
+
+        return restClient.post()
+                .uri("/pipelines/generate-pipeline-from-flow")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(formData)
+                .retrieve()
+                .body(Object.class);
+    }
+
     public PipelineListResponse getPipelinesByProject(Long projectId) {
         return restClient.get()
                 .uri("/pipelines/project/{projectId}", projectId)
