@@ -76,6 +76,34 @@ public class UserService implements UserDetailsService {
         return userRepository.save(newUser);
     }
 
+    /**
+     * Kakao OAuth 사용자 정보로 사용자 조회 또는 생성
+     */
+    @Transactional
+    public User findOrCreateKakaoUser(String nickname, String email, Long kakaoId, String kakaoAccessToken) {
+        String socialLoginId = String.valueOf(kakaoId);
+        Optional<User> existingUser = userRepository.findBySocialLoginId(socialLoginId);
+
+        if (existingUser.isPresent()) {
+            return existingUser.get();
+        }
+
+        // 중복되지 않는 고유한 username 생성
+        String username = nickname != null ? nickname : "kakao_" + socialLoginId;
+        if (userRepository.findByUsername(username).isPresent()) {
+            username = username + "_" + socialLoginId.substring(Math.max(0, socialLoginId.length() - 4));
+        }
+
+        // 새로운 Kakao 사용자 생성
+        User newUser = User.createUser(
+                username,
+                email != null ? email : socialLoginId + "@kakao.com",
+                "USER",
+                socialLoginId
+        );
+        return userRepository.save(newUser);
+    }
+
     @Transactional(readOnly = true)
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
@@ -93,6 +121,14 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public User save(User user) {
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateJobRole(Long id, JobRole jobRole) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found for id: " + id));
+        user.updateJobRole(jobRole);
         return userRepository.save(user);
     }
 }

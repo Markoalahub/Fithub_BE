@@ -7,6 +7,7 @@ import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import markoala.fithub.demo.github.service.GithubRepositoryService;
 import markoala.fithub.demo.user.User;
 import markoala.fithub.demo.user.UserService;
+import markoala.fithub.demo.user.JobRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,6 +35,7 @@ public class AuthController {
     private final GithubRepositoryService githubRepositoryService;
     private final UserService userService;
     private final JwtProvider jwtProvider;
+    private final KakaoService kakaoService;
 
     @Value("${github.client-id}")
     private String githubClientId;
@@ -43,14 +46,22 @@ public class AuthController {
     @Value("${github.redirect-uri}")
     private String githubRedirectUri;
 
+    @Value("${kakao.client-id}")
+    private String kakaoClientId;
+
+    @Value("${kakao.redirect-uri}")
+    private String kakaoRedirectUri;
+
     public AuthController(
             GithubRepositoryService githubRepositoryService,
             UserService userService,
-            JwtProvider jwtProvider
+            JwtProvider jwtProvider,
+            KakaoService kakaoService
     ) {
         this.githubRepositoryService = githubRepositoryService;
         this.userService = userService;
         this.jwtProvider = jwtProvider;
+        this.kakaoService = kakaoService;
     }
 
     @GetMapping("/login")
@@ -112,14 +123,164 @@ public class AuthController {
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
         response.put("githubAccessToken", githubAccessToken);
-        response.put("user", Map.of(
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "email", user.getEmail()
-        ));
+        
+        Map<String, Object> userMap = new HashMap<>();
+        userMap.put("id", user.getId());
+        userMap.put("username", user.getUsername());
+        userMap.put("email", user.getEmail() != null ? user.getEmail() : "");
+        userMap.put("jobRole", user.getJobRole() != null ? user.getJobRole().name() : "");
+        response.put("user", userMap);
 
         log.info("[Auth] OAuth callback completed. Tokens issued for user: {}", user.getId());
 
+        return response;
+    }
+
+    @GetMapping("/kakao/login")
+    @Operation(
+            summary = "Kakao OAuth 로그인",
+            description = "Kakao OAuth 인증 페이지로 자동 리다이렉트합니다"
+    )
+    public String kakaoLogin() {
+        log.info("[Auth] Redirecting to Kakao OAuth");
+
+        String kakaoAuthUrl = String.format(
+                "https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code",
+                kakaoClientId,
+                kakaoRedirectUri
+        );
+
+        return "redirect:" + kakaoAuthUrl;
+    }
+
+    @GetMapping("/kakao/callback")
+    @ResponseBody
+    @Operation(
+            summary = "Kakao OAuth 콜백",
+            description = "Kakao에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰, Kakao Access Token을 발급합니다"
+    )
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> kakaoCallback(
+            @Parameter(description = "Kakao OAuth 인증 코드", required = true)
+            @RequestParam String code
+    ) throws IOException {
+        log.info("[Auth] Processing Kakao callback with code: {}", code);
+
+        // 1. code -> Kakao access token 교환
+        String kakaoAccessToken = kakaoService.exchangeCodeForToken(code);
+        log.info("[Auth] Kakao access token acquired");
+
+        // 2. Kakao 사용자 정보 조회
+        Map<String, Object> userInfo = kakaoService.getUserInfoFromKakao(kakaoAccessToken);
+        Long kakaoId = ((Number) userInfo.get("id")).longValue();
+
+        Map<String, Object> properties = (Map<String, Object>) userInfo.get("properties");
+        String nickname = properties != null ? (String) properties.get("nickname") : "KakaoUser_" + kakaoId;
+
+        Map<String, Object> kakaoAccount = (Map<String, Object>) userInfo.get("kakao_account");
+        String email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;
+
+        log.info("[Auth] Kakao user info: nickname={}, email={}", nickname, email);
+
+        // 3. DB에 사용자 저장 또는 업데이트
+        User user = userService.findOrCreateKakaoUser(nickname, email, kakaoId, kakaoAccessToken);
+        log.info("[Auth] User saved/updated: id={}, username={}", user.getId(), user.getUsername());
+
+        // 4. JWT 토큰 발급
+        String accessToken = jwtProvider.generateAccessToken(user);
+        String refreshToken = jwtProvider.generateRefreshToken(user);
+
+        log.info("[Auth] JWT tokens generated for user: {}", user.getId());
+
+        // 5. 토큰 정보를 JSON으로 응답
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("accessToken", accessToken);
+        response.put("refreshToken", refreshToken);
+        response.put("kakaoAccessToken", kakaoAccessToken);
+        
+        Map<String, Object> userMap = new HashMap<>();
+        userMap.put("id", user.getId());
+        userMap.put("username", user.getUsername());
+        userMap.put("email", user.getEmail() != null ? user.getEmail() : "");
+        userMap.put("jobRole", user.getJobRole() != null ? user.getJobRole().name() : "");
+        response.put("user", userMap);
+
+        log.info("[Auth] Kakao OAuth callback completed. Tokens issued for user: {}", user.getId());
+
+        return response;
+    }
+
+    @GetMapping("/token")
+    @ResponseBody
+    @Operation(
+            summary = "세션에 발급된 JWT 토큰 조회",
+            description = "OAuth2 성공 후 세션에 임시 저장된 JWT 토큰을 화면에 JSON으로 반환합니다."
+    )
+    public Map<String, Object> getSessionToken(jakarta.servlet.http.HttpSession session) {
+        String token = (String) session.getAttribute("jwt_token");
+        Long userId = (Long) session.getAttribute("user_id");
+        String username = (String) session.getAttribute("username");
+        String jobRole = (String) session.getAttribute("job_role");
+
+        Map<String, Object> response = new java.util.HashMap<>();
+        if (token != null) {
+            response.put("success", true);
+            response.put("accessToken", token);
+            
+            Map<String, Object> userMap = new java.util.HashMap<>();
+            userMap.put("id", userId != null ? userId : "");
+            userMap.put("username", username != null ? username : "");
+            userMap.put("jobRole", jobRole != null ? jobRole : "");
+            response.put("user", userMap);
+        } else {
+            response.put("success", false);
+            response.put("message", "No token found in session. Please login first.");
+        }
+        return response;
+    }
+
+    @PutMapping("/user/job-role")
+    @ResponseBody
+    @Operation(
+            summary = "사용자 직군(JobRole) 설정/수정",
+            description = "로그인된 사용자의 직군(PLANNER, FRONTEND, BACKEND, AI)을 설정하거나 수정합니다."
+    )
+    public Map<String, Object> updateJobRole(
+            @Parameter(description = "설정할 직군 (PLANNER, FRONTEND, BACKEND, AI)", required = true)
+            @RequestParam JobRole jobRole,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        Map<String, Object> response = new HashMap<>();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            response.put("success", false);
+            response.put("message", "User is not authenticated.");
+            return response;
+        }
+
+        String username = authentication.getName();
+        java.util.Optional<User> userOpt = userService.findByUsername(username);
+
+        if (userOpt.isEmpty()) {
+            userOpt = userService.findBySocialLoginId(username);
+        }
+
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            userService.updateJobRole(user.getId(), jobRole);
+            response.put("success", true);
+            response.put("message", "Job role updated successfully.");
+            
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("id", user.getId());
+            userMap.put("username", user.getUsername());
+            userMap.put("email", user.getEmail() != null ? user.getEmail() : "");
+            userMap.put("jobRole", jobRole.name());
+            response.put("user", userMap);
+        } else {
+            response.put("success", false);
+            response.put("message", "User not found.");
+        }
         return response;
     }
 }
