@@ -37,6 +37,7 @@ FitHub는 **마이크로서비스 아키텍처**를 기반으로 설계되었으
 | email | VARCHAR(255) | NOT NULL, UNIQUE | 이메일 주소 |
 | role | VARCHAR(255) | NOT NULL | 사용자 역할 (USER, ADMIN) |
 | social_login_id | VARCHAR(255) | UNIQUE | GitHub ID (소셜로그인 ID) |
+| job_role | VARCHAR(255) | | 사용자 직군 (PLANNER, FRONTEND, BACKEND, AI) |
 | github_access_token | VARCHAR(1000) | | GitHub OAuth 액세스 토큰 |
 | created_at | TIMESTAMP | NOT NULL | 생성시각 (Hibernate 자동) |
 | updated_at | TIMESTAMP | | 수정시각 (Hibernate 자동) |

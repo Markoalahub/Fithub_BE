@@ -26,6 +26,10 @@ public class User {
     @Column(name = "social_login_id", unique = true)
     private String socialLoginId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_role")
+    private JobRole jobRole;
+
     @Column(name = "github_access_token")
     private String githubAccessToken;
 
@@ -70,6 +74,10 @@ public class User {
         return socialLoginId;
     }
 
+    public JobRole getJobRole() {
+        return jobRole;
+    }
+
     public String getGithubAccessToken() {
         return githubAccessToken;
     }
@@ -96,5 +104,9 @@ public class User {
 
     public void updateGithubAccessToken(String newGithubAccessToken) {
         this.githubAccessToken = newGithubAccessToken;
+    }
+
+    public void updateJobRole(JobRole newJobRole) {
+        this.jobRole = newJobRole;
     }
 }
