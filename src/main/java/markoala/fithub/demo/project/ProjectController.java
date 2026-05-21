@@ -9,13 +9,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import markoala.fithub.demo.project.dto.ProjectCreateRequest;
+import markoala.fithub.demo.project.dto.ProjectInviteRequest;
+import markoala.fithub.demo.project.dto.ProjectInviteResponse;
 import markoala.fithub.demo.project.dto.ProjectMemberAddRequest;
 import markoala.fithub.demo.project.dto.ProjectMemberRoleUpdateRequest;
 import markoala.fithub.demo.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.user.UserRepository;
-import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,28 +30,23 @@ public class ProjectController {
     private final ProjectService projectService;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
-    private final JwtProvider jwtProvider;
 
     public ProjectController(
             ProjectService projectService,
             ProjectMemberRepository projectMemberRepository,
-            UserRepository userRepository,
-            JwtProvider jwtProvider
+            UserRepository userRepository
     ) {
         this.projectService = projectService;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
-        this.jwtProvider = jwtProvider;
     }
 
     @GetMapping("/me")
     @Operation(summary = "내 프로젝트 목록 조회", description = "JWT 토큰을 기반으로 내가 참여 중인 프로젝트 목록을 조회합니다")
     @ApiResponse(responseCode = "200", description = "프로젝트 목록 조회 성공")
     public ResponseEntity<List<Project>> getMyProjects(
-            @RequestHeader(name = "Authorization") String authHeader
+            @AuthenticationPrincipal Long userId
     ) {
-        String token = authHeader.substring(7);
-        Long userId = jwtProvider.getUserIdFromToken(token);
         return ResponseEntity.ok(projectService.getUserProjects(userId));
     }
 
@@ -112,22 +109,36 @@ public class ProjectController {
             @ApiResponse(responseCode = "201", description = "멤버 추가 성공",
                     content = @Content(schema = @Schema(implementation = ProjectMember.class))),
             @ApiResponse(responseCode = "400", description = "이미 존재하는 멤버"),
+            @ApiResponse(responseCode = "403", description = "프로젝트 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자를 찾을 수 없음")
     })
     public ResponseEntity<ProjectMember> addMember(
+            @AuthenticationPrincipal Long currentUserId,
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectMemberAddRequest request
     ) {
-        projectService.getProject(projectId);
-        userRepository.findById(request.userId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + request.userId()));
+        ProjectMember member = projectService.addMember(currentUserId, projectId, request.userId(), request.role());
+        return ResponseEntity.status(HttpStatus.CREATED).body(member);
+    }
 
-        if (projectMemberRepository.findByProjectIdAndUserId(projectId, request.userId()).isPresent()) {
-            throw new IllegalArgumentException("User is already a member of this project");
-        }
+    @PostMapping("/{projectId}/invite")
+    @Operation(summary = "프로젝트 멤버 이메일 초대", description = "기획자가 이메일로 프로젝트에 멤버를 초대합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "초대 성공",
+                    content = @Content(schema = @Schema(implementation = ProjectInviteResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 이미 존재하는 멤버"),
+            @ApiResponse(responseCode = "403", description = "초대 권한 없음 (기획자 아님)"),
+            @ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자를 찾을 수 없음")
+    })
+    public ResponseEntity<ProjectInviteResponse> inviteUser(
+            @AuthenticationPrincipal Long inviterId,
+            @PathVariable Long projectId,
+            @Valid @RequestBody ProjectInviteRequest request
+    ) {
+        projectService.inviteUserToProject(inviterId, projectId, request.email(), request.role());
 
-        ProjectMember member = ProjectMember.createMember(projectId, request.userId(), request.role());
-        return ResponseEntity.status(HttpStatus.CREATED).body(projectMemberRepository.save(member));
+        Project project = projectService.getProject(projectId);
+        return ResponseEntity.ok(new ProjectInviteResponse(project.getId(), project.getName()));
     }
 
     @PatchMapping("/{projectId}/members/{memberId}/role")

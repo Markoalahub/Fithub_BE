@@ -2,6 +2,9 @@ package markoala.fithub.demo.project;
 
 import markoala.fithub.demo.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.project.dto.ProjectUpdateRequest;
+import markoala.fithub.demo.user.JobRole;
+import markoala.fithub.demo.user.User;
+import markoala.fithub.demo.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,10 +16,12 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final UserRepository userRepository;
 
-    public ProjectService(ProjectRepository projectRepository, ProjectMemberRepository projectMemberRepository) {
+    public ProjectService(ProjectRepository projectRepository, ProjectMemberRepository projectMemberRepository, UserRepository userRepository) {
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.userRepository = userRepository;
     }
 
     public Project getProject(Long projectId) {
@@ -56,5 +61,47 @@ public class ProjectService {
     @Transactional
     public void deleteProject(Long projectId) {
         projectRepository.deleteById(projectId);
+    }
+
+    @Transactional
+    public void inviteUserToProject(Long inviterId, Long projectId, String email, String role) {
+        User inviter = userRepository.findById(inviterId)
+                .orElseThrow(() -> new IllegalArgumentException("Inviter not found: " + inviterId));
+
+        if (inviter.getJobRole() != JobRole.PLANNER) {
+            throw new IllegalStateException("Only a PLANNER can invite users to a project.");
+        }
+
+        Project project = getProject(projectId);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+
+        projectMemberRepository.findByProjectIdAndUserId(projectId, user.getId())
+                .ifPresent(m -> {
+                    throw new IllegalStateException("User is already a member of this project.");
+                });
+
+        ProjectMember projectMember = ProjectMember.createMember(project.getId(), user.getId(), role);
+        projectMemberRepository.save(projectMember);
+    }
+
+    @Transactional
+    public ProjectMember addMember(Long currentUserId, Long projectId, Long userId, String role) {
+        projectMemberRepository.findByProjectIdAndUserId(projectId, currentUserId)
+                .orElseThrow(() -> new IllegalStateException("Only existing members can add new members to this project."));
+
+        Project project = getProject(projectId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .ifPresent(m -> {
+                    throw new IllegalArgumentException("User is already a member of this project");
+                });
+
+        ProjectMember member = ProjectMember.createMember(project.getId(), user.getId(), role);
+        return projectMemberRepository.save(member);
     }
 }
