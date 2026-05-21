@@ -13,6 +13,7 @@ import markoala.fithub.demo.project.dto.ProjectMemberAddRequest;
 import markoala.fithub.demo.project.dto.ProjectMemberRoleUpdateRequest;
 import markoala.fithub.demo.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.user.UserRepository;
+import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,18 +25,32 @@ import java.util.List;
 @Tag(name = "Projects", description = "프로젝트 관리 및 멤버 관리 API")
 public class ProjectController {
 
-    private final ProjectRepository projectRepository;
+    private final ProjectService projectService;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final JwtProvider jwtProvider;
 
     public ProjectController(
-            ProjectRepository projectRepository,
+            ProjectService projectService,
             ProjectMemberRepository projectMemberRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            JwtProvider jwtProvider
     ) {
-        this.projectRepository = projectRepository;
+        this.projectService = projectService;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
+        this.jwtProvider = jwtProvider;
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "내 프로젝트 목록 조회", description = "JWT 토큰을 기반으로 내가 참여 중인 프로젝트 목록을 조회합니다")
+    @ApiResponse(responseCode = "200", description = "프로젝트 목록 조회 성공")
+    public ResponseEntity<List<Project>> getMyProjects(
+            @RequestHeader(name = "Authorization") String authHeader
+    ) {
+        String token = authHeader.substring(7);
+        Long userId = jwtProvider.getUserIdFromToken(token);
+        return ResponseEntity.ok(projectService.getUserProjects(userId));
     }
 
     @GetMapping("/{projectId}")
@@ -46,23 +61,21 @@ public class ProjectController {
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
     })
     public ResponseEntity<Project> getProject(@PathVariable Long projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
-        return ResponseEntity.ok(project);
+        return ResponseEntity.ok(projectService.getProject(projectId));
     }
 
     @PostMapping
     @Operation(summary = "프로젝트 생성", description = "새로운 프로젝트를 생성합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "프로젝트 생성 성공",
-                    content = @Content(schema = @Schema(implementation = Project.class))),
+                    content = @Content(schema = @Schema(implementation = Long.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
     })
-    public ResponseEntity<Project> createProject(
+    public ResponseEntity<Long> createProject(
             @Valid @RequestBody ProjectCreateRequest request
     ) {
-        Project project = Project.createProject(request.name(), request.description());
-        return ResponseEntity.status(HttpStatus.CREATED).body(projectRepository.save(project));
+        Long projectId = projectService.createProject(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(projectId);
     }
 
     @PatchMapping("/{projectId}")
@@ -75,20 +88,14 @@ public class ProjectController {
             @PathVariable Long projectId,
             @RequestBody ProjectUpdateRequest request
     ) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
-
-        if (request.name() != null && !request.name().isBlank()) project.updateName(request.name());
-        if (request.description() != null && !request.description().isBlank()) project.updateDescription(request.description());
-
-        return ResponseEntity.ok(projectRepository.save(project));
+        return ResponseEntity.ok(projectService.updateProject(projectId, request));
     }
 
     @DeleteMapping("/{projectId}")
     @Operation(summary = "프로젝트 삭제", description = "특정 프로젝트를 삭제합니다")
     @ApiResponse(responseCode = "204", description = "프로젝트 삭제 성공")
     public ResponseEntity<Void> deleteProject(@PathVariable Long projectId) {
-        projectRepository.deleteById(projectId);
+        projectService.deleteProject(projectId);
         return ResponseEntity.noContent().build();
     }
 
@@ -111,8 +118,7 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectMemberAddRequest request
     ) {
-        projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+        projectService.getProject(projectId);
         userRepository.findById(request.userId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + request.userId()));
 
