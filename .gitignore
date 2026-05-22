@@ -47,3 +47,9 @@ data/*.mv.db
 ### macOS ###
 .DS_Store
 .claude/
+
+### Miscellaneous ###
+.antigravitycli/
+data/*.db
+t1.pdf
+test_integration_server.py
