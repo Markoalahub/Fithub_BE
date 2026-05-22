@@ -91,7 +91,7 @@ class EndToEndPipelineIntegrationTest {
         testProject = projectRepository.save(testProject);
 
         // Setup JWT mock
-        User testUser = new User(TEST_USER_ID, "testuser", "test@example.com", "USER", "github123", "ghp_test_token", null, null);
+        User testUser = new User(TEST_USER_ID, "testuser", "test@example.com", "USER", "github123", "ghp_test_token", null, null, null);
         when(jwtProvider.validateToken(TEST_JWT_TOKEN)).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(TEST_JWT_TOKEN)).thenReturn(TEST_USER_ID);
         when(userService.findById(TEST_USER_ID)).thenReturn(java.util.Optional.of(testUser));
@@ -132,7 +132,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/v1/projects/{projectId}/repositories/sync-from-github", testProject.getId())
+        mockMvc.perform(post("/api/v1/projects/{projectId}/repositories/sync", testProject.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
                 .andExpect(status().isCreated())
@@ -247,6 +247,7 @@ class EndToEndPipelineIntegrationTest {
 
         mockMvc.perform(post("/api/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value("API 설계"))
@@ -298,8 +299,15 @@ class EndToEndPipelineIntegrationTest {
         )).thenReturn(mockSync);
 
         // Sync to GitHub
+        String syncRequestBody = """
+            {
+              "repoUrl": "https://github.com/KYH-99/travel-plan"
+            }
+            """;
+            
         mockMvc.perform(post("/api/v1/issues/{issueId}/sync", testIssue.getId())
-                .param("repoUrl", "https://github.com/KYH-99/travel-plan")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(syncRequestBody)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("SYNCED"))
@@ -334,7 +342,7 @@ class EndToEndPipelineIntegrationTest {
             """;
 
         var syncResponse = mockMvc.perform(
-                post("/api/v1/projects/{projectId}/repositories/sync-from-github", testProject.getId())
+                post("/api/v1/projects/{projectId}/repositories/sync", testProject.getId())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(syncBody))
                 .andExpect(status().isCreated())
@@ -383,6 +391,7 @@ class EndToEndPipelineIntegrationTest {
 
         mockMvc.perform(post("/api/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(issueBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value("수정된 API 설계"));
@@ -397,8 +406,15 @@ class EndToEndPipelineIntegrationTest {
             any(), eq("https://github.com/KYH-99/travel-plan"), anyString()
         )).thenReturn(mockSync);
 
+        String syncBody2 = """
+            {
+              "repoUrl": "https://github.com/KYH-99/travel-plan"
+            }
+            """;
+
         mockMvc.perform(post("/api/v1/issues/{issueId}/sync", createdIssue.getId())
-                .param("repoUrl", "https://github.com/KYH-99/travel-plan")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(syncBody2)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("SYNCED"))
