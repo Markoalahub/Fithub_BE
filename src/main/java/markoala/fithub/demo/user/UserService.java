@@ -65,10 +65,10 @@ public class UserService implements UserDetailsService {
             return userRepository.save(user);
         }
 
-        // 새로운 GitHub 사용자 생성
+        // 새로운 GitHub 사용자 생성 (email은 GitHub에서 가져온 값, 없으면 null → 회원가입 시 입력)
         User newUser = User.createUser(
                 githubLogin,
-                email != null ? email : githubLogin + "@github.com",
+                email,  // GitHub가 이메일 제공 안 하면 null, 회원가입 단계에서 수집
                 "USER",
                 String.valueOf(githubId)
         );
@@ -96,15 +96,41 @@ public class UserService implements UserDetailsService {
             username = username + "_" + socialLoginId.substring(Math.max(0, socialLoginId.length() - 4));
         }
 
-        // 새로운 Kakao 사용자 생성
+        // 새로운 Kakao 사용자 생성 (email은 Kakao에서 가져온 값, 없으면 null → 회원가입 시 입력)
         User newUser = User.createUser(
                 username,
-                email != null ? email : socialLoginId + "@kakao.com",
+                email,  // Kakao가 이메일 제공 안 하면 null, 회원가입 단계에서 수집
                 "USER",
                 socialLoginId
         );
         newUser.updateKakaoAccessToken(kakaoAccessToken);
         return userRepository.save(newUser);
+    }
+
+    /**
+     * 회원가입 완료: 이메일 + 직군 설정
+     * - 이메일 중복 검사 (본인 제외)
+     * - isRegistered = true 설정
+     */
+    @Transactional
+    public User completeSignup(Long userId, String email, JobRole jobRole) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        // 이미 회원가입 완료된 경우
+        if (user.isRegistered()) {
+            throw new IllegalStateException("이미 회원가입이 완료된 사용자입니다.");
+        }
+
+        // 이메일 중복 검사 (다른 유저가 동일 이메일 사용 중인지)
+        userRepository.findByEmail(email).ifPresent(existing -> {
+            if (!existing.getId().equals(userId)) {
+                throw new IllegalStateException("이미 사용 중인 이메일입니다: " + email);
+            }
+        });
+
+        user.completeRegistration(email, jobRole);
+        return userRepository.save(user);
     }
 
     @Transactional(readOnly = true)

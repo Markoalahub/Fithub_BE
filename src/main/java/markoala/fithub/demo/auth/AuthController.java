@@ -3,6 +3,8 @@ package markoala.fithub.demo.auth;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import markoala.fithub.demo.auth.dto.SignupRequest;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import markoala.fithub.demo.github.service.GithubRepositoryService;
 import markoala.fithub.demo.user.User;
@@ -13,13 +15,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -85,7 +83,7 @@ public class AuthController {
     @ResponseBody
     @Operation(
             summary = "GitHub OAuth 콜백",
-            description = "GitHub에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰, GitHub Access Token을 발급합니다"
+            description = "GitHub에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰, GitHub Access Token을 발급합니다. 신규 유저는 requiresSignup=true"
     )
     public Map<String, Object> githubCallback(
             @Parameter(description = "GitHub OAuth 인증 코드", required = true)
@@ -102,7 +100,7 @@ public class AuthController {
         // 2. GitHub 사용자 정보 조회
         Map<String, Object> userInfo = githubRepositoryService.getUserInfoFromGithub(githubAccessToken);
         String githubLogin = (String) userInfo.get("login");
-        String githubEmail = (String) userInfo.get("email");
+        String githubEmail = (String) userInfo.get("email");  // 비공개 설정 시 null
         Long githubId = ((Number) userInfo.get("id")).longValue();
 
         log.info("[Auth] GitHub user info: login={}, email={}", githubLogin, githubEmail);
@@ -117,13 +115,15 @@ public class AuthController {
 
         log.info("[Auth] JWT tokens generated for user: {}", user.getId());
 
-        // 5. 토큰 정보를 JSON으로 응답
+        // 5. 응답 구성
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
+        response.put("requiresSignup", !user.isRegistered());  // 신규 유저면 true → 프론트는 회원가입 화면으로 이동
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
         response.put("githubAccessToken", githubAccessToken);
-        
+        response.put("oauthEmail", githubEmail);  // GitHub 이메일 (null이면 회원가입 화면에서 직접 입력)
+
         Map<String, Object> userMap = new HashMap<>();
         userMap.put("id", user.getId());
         userMap.put("username", user.getUsername());
@@ -131,7 +131,7 @@ public class AuthController {
         userMap.put("jobRole", user.getJobRole() != null ? user.getJobRole().name() : "");
         response.put("user", userMap);
 
-        log.info("[Auth] OAuth callback completed. Tokens issued for user: {}", user.getId());
+        log.info("[Auth] OAuth callback completed. requiresSignup={}, user: {}", !user.isRegistered(), user.getId());
 
         return response;
     }
@@ -157,7 +157,7 @@ public class AuthController {
     @ResponseBody
     @Operation(
             summary = "Kakao OAuth 콜백",
-            description = "Kakao에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰, Kakao Access Token을 발급합니다"
+            description = "Kakao에서 리다이렉트되는 콜백 엔드포인트. JWT 토큰 발급. 신규 유저는 requiresSignup=true, jobRole은 PLANNER 자동 설정"
     )
     @SuppressWarnings("unchecked")
     public Map<String, Object> kakaoCallback(
@@ -178,7 +178,7 @@ public class AuthController {
         String nickname = properties != null ? (String) properties.get("nickname") : "KakaoUser_" + kakaoId;
 
         Map<String, Object> kakaoAccount = (Map<String, Object>) userInfo.get("kakao_account");
-        String email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;
+        String email = kakaoAccount != null ? (String) kakaoAccount.get("email") : null;  // 동의 안 하면 null
 
         log.info("[Auth] Kakao user info: nickname={}, email={}", nickname, email);
 
@@ -192,13 +192,16 @@ public class AuthController {
 
         log.info("[Auth] JWT tokens generated for user: {}", user.getId());
 
-        // 5. 토큰 정보를 JSON으로 응답
+        // 5. 응답 구성 (Kakao 사용자는 PLANNER 역할 자동 설정 예정)
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
+        response.put("requiresSignup", !user.isRegistered());  // 신규 유저면 true
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
         response.put("kakaoAccessToken", kakaoAccessToken);
-        
+        response.put("oauthEmail", email);  // Kakao 이메일 (null이면 회원가입 화면에서 직접 입력)
+        response.put("suggestedJobRole", "PLANNER");  // Kakao 로그인 → 기획자 자동 제안
+
         Map<String, Object> userMap = new HashMap<>();
         userMap.put("id", user.getId());
         userMap.put("username", user.getUsername());
@@ -206,9 +209,54 @@ public class AuthController {
         userMap.put("jobRole", user.getJobRole() != null ? user.getJobRole().name() : "");
         response.put("user", userMap);
 
-        log.info("[Auth] Kakao OAuth callback completed. Tokens issued for user: {}", user.getId());
+        log.info("[Auth] Kakao OAuth callback completed. requiresSignup={}, user: {}", !user.isRegistered(), user.getId());
 
         return response;
+    }
+
+    @PostMapping("/signup")
+    @ResponseBody
+    @Operation(
+            summary = "회원가입 완료",
+            description = "OAuth 로그인 후 이메일과 직군(jobRole)을 설정하여 회원가입을 완료합니다. " +
+                    "Kakao 로그인 사용자는 PLANNER, GitHub 로그인 사용자는 원하는 직군을 선택합니다."
+    )
+    public ResponseEntity<Map<String, Object>> signup(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody SignupRequest request
+    ) {
+        Map<String, Object> response = new HashMap<>();
+
+        if (userId == null) {
+            response.put("success", false);
+            response.put("message", "인증 토큰이 필요합니다. OAuth 로그인 후 발급된 accessToken을 사용하세요.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+
+        try {
+            User user = userService.completeSignup(userId, request.email(), request.jobRole());
+            log.info("[Auth] Signup completed for user: id={}, email={}, jobRole={}", user.getId(), user.getEmail(), user.getJobRole());
+
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("id", user.getId());
+            userMap.put("username", user.getUsername());
+            userMap.put("email", user.getEmail());
+            userMap.put("jobRole", user.getJobRole().name());
+
+            response.put("success", true);
+            response.put("message", "회원가입이 완료되었습니다.");
+            response.put("user", userMap);
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalStateException e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        } catch (IllegalArgumentException e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
     }
 
     @GetMapping("/token")
