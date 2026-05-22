@@ -15,14 +15,13 @@ import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.global.security.handler.OAuth2SuccessHandler;
 import markoala.fithub.demo.global.security.jwt.JwtAuthenticationFilter;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
-import markoala.fithub.demo.global.security.jwt.JwtTokenProvider;
+
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-        private final JwtTokenProvider tokenProvider;
         private final JwtProvider jwtProvider;
         private final OAuth2SuccessHandler successHandler;
 

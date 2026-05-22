@@ -33,6 +33,9 @@ public class User {
     @Column(name = "github_access_token")
     private String githubAccessToken;
 
+    @Column(name = "kakao_access_token")
+    private String kakaoAccessToken;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -43,13 +46,14 @@ public class User {
 
     public User() {}
 
-    public User(Long id, String username, String email, String role, String socialLoginId, String githubAccessToken, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public User(Long id, String username, String email, String role, String socialLoginId, String githubAccessToken, String kakaoAccessToken, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.role = role;
         this.socialLoginId = socialLoginId;
         this.githubAccessToken = githubAccessToken;
+        this.kakaoAccessToken = kakaoAccessToken;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -82,6 +86,10 @@ public class User {
         return githubAccessToken;
     }
 
+    public String getKakaoAccessToken() {
+        return kakaoAccessToken;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -91,7 +99,7 @@ public class User {
     }
 
     public static User createUser(String username, String email, String role, String socialLoginId) {
-        return new User(null, username, email, role, socialLoginId, null, null, null);
+        return new User(null, username, email, role, socialLoginId, null, null, null, null);
     }
 
     public void updateRole(String newRole) {
@@ -104,6 +112,10 @@ public class User {
 
     public void updateGithubAccessToken(String newGithubAccessToken) {
         this.githubAccessToken = newGithubAccessToken;
+    }
+
+    public void updateKakaoAccessToken(String newKakaoAccessToken) {
+        this.kakaoAccessToken = newKakaoAccessToken;
     }
 
     public void updateJobRole(JobRole newJobRole) {

@@ -85,7 +85,9 @@ public class UserService implements UserDetailsService {
         Optional<User> existingUser = userRepository.findBySocialLoginId(socialLoginId);
 
         if (existingUser.isPresent()) {
-            return existingUser.get();
+            User user = existingUser.get();
+            user.updateKakaoAccessToken(kakaoAccessToken);
+            return userRepository.save(user);
         }
 
         // 중복되지 않는 고유한 username 생성
@@ -101,6 +103,7 @@ public class UserService implements UserDetailsService {
                 "USER",
                 socialLoginId
         );
+        newUser.updateKakaoAccessToken(kakaoAccessToken);
         return userRepository.save(newUser);
     }
 
