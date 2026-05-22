@@ -56,11 +56,19 @@ public class SecurityConfig {
                                                 .requestMatchers(
                                                         "/", "/login/**", "/signup/**",
                                                         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                                                        "/api/v1/auth/token"
+                                                        "/api/v1/auth/token",
+                                                        "/api/v1/auth/dev/token",  // [DEV ONLY] 운영 시 제거
+                                                        "/api/v1/auth/github/callback",
+                                                        "/api/v1/auth/kakao/callback",
+                                                        "/api/v1/auth/login",
+                                                        "/api/v1/auth/kakao/login"
                                                 ).permitAll()
                                                 // 정적 리소스
                                                 .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
-                                                // API 전체 허용 (개발 단계 - 추후 인증 필요 시 아래 주석 해제)
+                                                // 인증이 필요한 API (JWT 토큰 필수)
+                                                .requestMatchers("/api/v1/projects/**").authenticated()
+                                                .requestMatchers("/api/v1/issues/**").authenticated()
+                                                // 나머지 API는 개발 단계에서 허용
                                                 .requestMatchers("/api/v1/**").permitAll()
                                                 // 그 외 모든 경로는 인증 필요
                                                 .anyRequest().authenticated())

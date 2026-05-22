@@ -41,14 +41,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // JWT 토큰 기반 인증 설정
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                username,
+                                userId,
                                 null,
                                 java.util.Collections.emptyList()
                         );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } else {
-                log.warn("[JWT] Invalid token provided");
+                log.warn("[JWT] Invalid token provided for request: {} {}", request.getMethod(), request.getRequestURI());
             }
+        } else {
+            log.debug("[JWT] No Bearer token found for request: {} {}", request.getMethod(), request.getRequestURI());
         }
 
         filterChain.doFilter(request, response);

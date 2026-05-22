@@ -240,6 +240,37 @@ public class AuthController {
         return response;
     }
 
+    /**
+     * [개발/테스트 전용] userId로 JWT 토큰 발급
+     * 운영 환경에서는 이 엔드포인트를 반드시 제거하세요.
+     */
+    @GetMapping("/dev/token")
+    @ResponseBody
+    @Operation(
+            summary = "[DEV ONLY] userId로 JWT 토큰 발급",
+            description = "개발/테스트 용도로만 사용. userId에 해당하는 사용자의 JWT accessToken을 반환합니다."
+    )
+    public ResponseEntity<Map<String, Object>> devToken(
+            @Parameter(description = "토큰을 발급할 사용자 ID", required = true)
+            @RequestParam Long userId
+    ) {
+        Map<String, Object> response = new HashMap<>();
+        return userService.findById(userId)
+                .map(user -> {
+                    String accessToken = jwtProvider.generateAccessToken(user);
+                    response.put("success", true);
+                    response.put("accessToken", accessToken);
+                    response.put("userId", user.getId());
+                    response.put("username", user.getUsername());
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() -> {
+                    response.put("success", false);
+                    response.put("message", "User not found: " + userId);
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                });
+    }
+
     @PutMapping("/user/job-role")
     @ResponseBody
     @Operation(

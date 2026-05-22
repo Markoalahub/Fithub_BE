@@ -38,9 +38,16 @@ public class ProjectService {
     }
 
     @Transactional
-    public Long createProject(ProjectCreateRequest request) {
+    public Long createProject(Long userId, ProjectCreateRequest request) {
+        if (userId == null) {
+            throw new IllegalStateException("인증된 사용자만 프로젝트를 생성할 수 있습니다.");
+        }
         Project project = Project.createProject(request.name(), request.description());
         Project savedProject = projectRepository.save(project);
+
+        ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, "PLANNER");
+        projectMemberRepository.save(creator);
+
         return savedProject.getId();
     }
 

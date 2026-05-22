@@ -69,9 +69,10 @@ public class ProjectController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
     })
     public ResponseEntity<Long> createProject(
+            @AuthenticationPrincipal Long userId,
             @Valid @RequestBody ProjectCreateRequest request
     ) {
-        Long projectId = projectService.createProject(request);
+        Long projectId = projectService.createProject(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(projectId);
     }
 
