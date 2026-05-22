@@ -57,7 +57,8 @@ public class UserService implements UserDetailsService {
      */
     @Transactional
     public User findOrCreateGithubUser(String githubLogin, String email, Long githubId, String githubAccessToken) {
-        Optional<User> existingUser = userRepository.findByUsername(githubLogin);
+        String socialLoginId = String.valueOf(githubId);
+        Optional<User> existingUser = userRepository.findBySocialLoginId(socialLoginId);
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
@@ -65,14 +66,25 @@ public class UserService implements UserDetailsService {
             return userRepository.save(user);
         }
 
-        // 새로운 GitHub 사용자 생성 (email은 GitHub에서 가져온 값, 없으면 null → 회원가입 시 입력)
-        User newUser = User.createUser(
-                githubLogin,
-                email,  // GitHub가 이메일 제공 안 하면 null, 회원가입 단계에서 수집
-                "USER",
-                String.valueOf(githubId)
-        );
+        // 1. username 중복 방지 처리
+        String username = githubLogin != null ? githubLogin : "github_" + socialLoginId;
+        if (userRepository.findByUsername(username).isPresent()) {
+            username = username + "_" + socialLoginId;
+        }
+
+        // 2. email 누락 및 중복 충돌 방지 처리
+        String targetEmail = email;
+        if (targetEmail == null || targetEmail.isBlank()) {
+            targetEmail = "github_" + socialLoginId + "@fithub.temporary.com";
+        } else if (userRepository.findByEmail(targetEmail).isPresent()) {
+            targetEmail = "github_" + socialLoginId + "_" + System.currentTimeMillis() + "@fithub.temporary.com";
+        }
+
+        // 3. 새로운 GitHub 사용자 생성 및 자동 가입 완료 처리
+        User newUser = User.createUser(username, targetEmail, "USER", socialLoginId);
+        newUser.completeRegistration(targetEmail, null); // 직군은 최초 가입 시 null
         newUser.updateGithubAccessToken(githubAccessToken);
+
         return userRepository.save(newUser);
     }
 
@@ -90,20 +102,25 @@ public class UserService implements UserDetailsService {
             return userRepository.save(user);
         }
 
-        // 중복되지 않는 고유한 username 생성
+        // 1. username 중복 방지 처리
         String username = nickname != null ? nickname : "kakao_" + socialLoginId;
         if (userRepository.findByUsername(username).isPresent()) {
-            username = username + "_" + socialLoginId.substring(Math.max(0, socialLoginId.length() - 4));
+            username = username + "_" + socialLoginId;
         }
 
-        // 새로운 Kakao 사용자 생성 (email은 Kakao에서 가져온 값, 없으면 null → 회원가입 시 입력)
-        User newUser = User.createUser(
-                username,
-                email,  // Kakao가 이메일 제공 안 하면 null, 회원가입 단계에서 수집
-                "USER",
-                socialLoginId
-        );
+        // 2. email 누락 및 중복 충돌 방지 처리
+        String targetEmail = email;
+        if (targetEmail == null || targetEmail.isBlank()) {
+            targetEmail = "kakao_" + socialLoginId + "@fithub.temporary.com";
+        } else if (userRepository.findByEmail(targetEmail).isPresent()) {
+            targetEmail = "kakao_" + socialLoginId + "_" + System.currentTimeMillis() + "@fithub.temporary.com";
+        }
+
+        // 3. 새로운 Kakao 사용자 생성 및 자동 가입 완료 처리
+        User newUser = User.createUser(username, targetEmail, "USER", socialLoginId);
+        newUser.completeRegistration(targetEmail, null); // 직군은 최초 가입 시 null
         newUser.updateKakaoAccessToken(kakaoAccessToken);
+
         return userRepository.save(newUser);
     }
 
@@ -159,5 +176,38 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found for id: " + id));
         user.updateJobRole(jobRole);
         return userRepository.save(user);
+    }
+
+    /**
+     * 회원가입 진행 (신규 유저 생성 및 연동)
+     */
+    @Transactional
+    public User registerUser(String email, String username, JobRole jobRole, String socialLoginId, String socialType, String oauthAccessToken) {
+        // 1. 이메일 중복 검사
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new IllegalStateException("이미 사용 중인 이메일입니다: " + email);
+        }
+
+        // 2. username 중복 검사
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new IllegalStateException("이미 사용 중인 이름입니다: " + username);
+        }
+
+        // 3. socialLoginId 중복 검사
+        if (userRepository.findBySocialLoginId(socialLoginId).isPresent()) {
+            throw new IllegalStateException("이미 가입된 소셜 계정입니다.");
+        }
+
+        // 4. User 객체 새로 빌드 및 생성 (완료된 상태로 저장)
+        User newUser = User.createUser(username, email, "USER", socialLoginId);
+        newUser.completeRegistration(email, jobRole);
+
+        if ("GITHUB".equalsIgnoreCase(socialType)) {
+            newUser.updateGithubAccessToken(oauthAccessToken);
+        } else if ("KAKAO".equalsIgnoreCase(socialType)) {
+            newUser.updateKakaoAccessToken(oauthAccessToken);
+        }
+
+        return userRepository.save(newUser);
     }
 }

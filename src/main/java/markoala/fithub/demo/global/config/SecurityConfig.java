@@ -61,14 +61,14 @@ public class SecurityConfig {
                                                         "/api/v1/auth/github/callback",
                                                         "/api/v1/auth/kakao/callback",
                                                         "/api/v1/auth/login",
-                                                        "/api/v1/auth/kakao/login"
+                                                        "/api/v1/auth/kakao/login",
+                                                        "/api/v1/auth/signup"
                                                 ).permitAll()
                                                 // 정적 리소스
                                                 .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                                                 // 인증이 필요한 API (JWT 토큰 필수)
                                                 .requestMatchers("/api/v1/projects/**").authenticated()
                                                 .requestMatchers("/api/v1/issues/**").authenticated()
-                                                .requestMatchers("/api/v1/auth/signup").authenticated()  // 회원가입 완료는 JWT 필요
                                                 // 나머지 API는 개발 단계에서 허용
                                                 .requestMatchers("/api/v1/**").permitAll()
                                                 // 그 외 모든 경로는 인증 필요
