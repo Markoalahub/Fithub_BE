@@ -121,8 +121,9 @@ public class AuthController {
         response.put("requiresSignup", !user.isRegistered());  // 신규 유저면 true → 프론트는 회원가입 화면으로 이동
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
-        response.put("githubAccessToken", githubAccessToken);
+        response.put("gitAccessToken", githubAccessToken);
         response.put("oauthEmail", githubEmail);  // GitHub 이메일 (null이면 회원가입 화면에서 직접 입력)
+        response.put("suggestedJobRole", "BACKEND");  // GitHub 로그인 → 개발자 제안 (기본 BACKEND)
 
         Map<String, Object> userMap = new HashMap<>();
         userMap.put("id", user.getId());
@@ -192,13 +193,13 @@ public class AuthController {
 
         log.info("[Auth] JWT tokens generated for user: {}", user.getId());
 
-        // 5. 응답 구성 (Kakao 사용자는 PLANNER 역할 자동 설정 예정)
+        // 5. 응답 구성
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("requiresSignup", !user.isRegistered());  // 신규 유저면 true
         response.put("accessToken", accessToken);
         response.put("refreshToken", refreshToken);
-        response.put("kakaoAccessToken", kakaoAccessToken);
+        response.put("KakaoAccessToken", kakaoAccessToken);
         response.put("oauthEmail", email);  // Kakao 이메일 (null이면 회원가입 화면에서 직접 입력)
         response.put("suggestedJobRole", "PLANNER");  // Kakao 로그인 → 기획자 자동 제안
 
