@@ -1,12 +1,14 @@
 package markoala.fithub.demo.user;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Getter
 @Table(name = "users")
 public class User {
 
@@ -33,7 +35,7 @@ public class User {
     private JobRole jobRole;
 
     // OAuth 로그인 완료 후 회원가입(이메일+직군 설정)까지 완료했는지 여부
-    @Column(name = "is_registered", nullable = false)
+    @Column(name = "is_registered", nullable = false, columnDefinition = "boolean default false")
     private boolean isRegistered = false;
 
     @Column(name = "github_access_token")
@@ -67,49 +69,6 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public String getSocialLoginId() {
-        return socialLoginId;
-    }
-
-    public JobRole getJobRole() {
-        return jobRole;
-    }
-
-    public boolean isRegistered() {
-        return isRegistered;
-    }
-
-    public String getGithubAccessToken() {
-        return githubAccessToken;
-    }
-
-    public String getKakaoAccessToken() {
-        return kakaoAccessToken;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 
     public static User createUser(String username, String email, String role, String socialLoginId) {
         return new User(null, username, email, role, socialLoginId, false, null, null, null, null);
