@@ -24,8 +24,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -56,6 +61,9 @@ public class AuthController {
     @Value("${kakao.redirect-uri}")
     private String kakaoRedirectUri;
 
+    @Value("${app.frontend.oauth-callback-url:http://localhost:3000/auth/oauth/callback}")
+    private String frontendOAuthCallbackUrl;
+
     public AuthController(
             GithubRepositoryService githubRepositoryService,
             UserService userService,
@@ -73,25 +81,35 @@ public class AuthController {
             summary = "GitHub OAuth 로그인",
             description = "GitHub OAuth 인증 페이지로 자동 리다이렉트합니다"
     )
-    public String login() {
+    public String login(
+            @Parameter(description = "로그인 성공 후 프론트 리다이렉트 URL")
+            @RequestParam(required = false) String frontendRedirect,
+            @Parameter(description = "역할 정보 (pm/dev-fe/dev-be)")
+            @RequestParam(required = false) String role
+    ) {
         log.info("[Auth] Redirecting to GitHub OAuth");
 
-        String githubAuthUrl = String.format(
+        StringBuilder githubAuthUrl = new StringBuilder(String.format(
                 "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=repo,user,read:org",
                 githubClientId,
                 githubRedirectUri
-        );
+        ));
+
+        String state = encodeState(frontendRedirect, role);
+        if (state != null) {
+            githubAuthUrl.append("&state=")
+                    .append(URLEncoder.encode(state, StandardCharsets.UTF_8));
+        }
 
         return "redirect:" + githubAuthUrl;
     }
 
     @GetMapping("/github/callback")
-    @ResponseBody
     @Operation(
             summary = "GitHub OAuth 콜백",
             description = "GitHub에서 리다이렉트되는 콜백 엔드포인트. 이미 가입된 유저라면 JWT를 즉시 발급하고, 신규 가입 유저라면 가입에 필요한 소셜 정보를 반환합니다."
     )
-    public GithubCallbackResponse githubCallback(
+    public ResponseEntity<?> githubCallback(
             @Parameter(description = "GitHub OAuth 인증 코드", required = true)
             @RequestParam String code,
             @Parameter(description = "CSRF 방지용 상태 토큰")
@@ -120,13 +138,44 @@ public class AuthController {
 
         log.info("[Auth] GitHub user authenticated and logged in. User: {}", user.getId());
 
-        return new GithubCallbackResponse(
+        GithubCallbackResponse response = new GithubCallbackResponse(
                 true,
                 githubAccessToken,
                 accessToken,
                 refreshToken,
                 new GithubCallbackResponse.UserDto(user.getId())
         );
+
+        Map<String, String> stateMap = decodeState(state);
+        String frontendRedirectFromState = stateMap.get("frontendRedirect");
+        if (frontendRedirectFromState != null && !frontendRedirectFromState.trim().isBlank()) {
+            String frontendRedirect = frontendRedirectFromState.trim();
+            String role = stateMap.getOrDefault("role", "dev-fe").trim();
+            if (role.isBlank()) {
+                role = "dev-fe";
+            }
+
+            String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirect)
+                    .queryParam("success", "true")
+                    .queryParam("provider", "github")
+                    .queryParam("gitAccessToken", response.gitAccessToken())
+                    .queryParam("githubAccessToken", response.gitAccessToken())
+                    .queryParam("accessToken", response.accessToken())
+                    .queryParam("refreshToken", response.refreshToken())
+                    .queryParam("userId", response.user().id())
+                    .queryParam("username", user.getUsername() != null ? user.getUsername() : "")
+                    .queryParam("email", user.getEmail() != null ? user.getEmail() : "")
+                    .queryParam("role", role)
+                    .build()
+                    .encode()
+                    .toUriString();
+
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(redirectUrl))
+                    .build();
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/kakao/login")
@@ -134,28 +183,40 @@ public class AuthController {
             summary = "Kakao OAuth 로그인",
             description = "Kakao OAuth 인증 페이지로 자동 리다이렉트합니다"
     )
-    public String kakaoLogin() {
+    public String kakaoLogin(
+            @Parameter(description = "로그인 성공 후 프론트 리다이렉트 URL")
+            @RequestParam(required = false) String frontendRedirect,
+            @Parameter(description = "역할 정보 (pm/dev-fe/dev-be)")
+            @RequestParam(required = false) String role
+    ) {
         log.info("[Auth] Redirecting to Kakao OAuth");
 
-        String kakaoAuthUrl = String.format(
+        StringBuilder kakaoAuthUrl = new StringBuilder(String.format(
                 "https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code",
                 kakaoClientId,
                 kakaoRedirectUri
-        );
+        ));
+
+        String state = encodeState(frontendRedirect, role);
+        if (state != null) {
+            kakaoAuthUrl.append("&state=")
+                    .append(URLEncoder.encode(state, StandardCharsets.UTF_8));
+        }
 
         return "redirect:" + kakaoAuthUrl;
     }
 
     @GetMapping("/kakao/callback")
-    @ResponseBody
     @Operation(
             summary = "Kakao OAuth 콜백",
             description = "Kakao에서 리다이렉트되는 콜백 엔드포인트. 이미 가입된 유저라면 JWT를 즉시 발급하고, 신규 가입 유저라면 가입에 필요한 소셜 정보를 반환합니다."
     )
     @SuppressWarnings("unchecked")
-    public KakaoCallbackResponse kakaoCallback(
+    public ResponseEntity<?> kakaoCallback(
             @Parameter(description = "Kakao OAuth 인증 코드", required = true)
-            @RequestParam String code
+            @RequestParam String code,
+            @Parameter(description = "Kakao OAuth state")
+            @RequestParam(required = false) String state
     ) throws IOException {
         log.info("[Auth] Processing Kakao callback with code: {}", code);
 
@@ -184,13 +245,84 @@ public class AuthController {
 
         log.info("[Auth] Kakao user authenticated and logged in. User: {}", user.getId());
 
-        return new KakaoCallbackResponse(
+        KakaoCallbackResponse response = new KakaoCallbackResponse(
                 true,
                 kakaoAccessToken,
                 accessToken,
                 refreshToken,
                 new KakaoCallbackResponse.UserDto(user.getId())
         );
+
+        Map<String, String> stateMap = decodeState(state);
+        String frontendRedirectFromState = stateMap.get("frontendRedirect");
+        if (frontendRedirectFromState != null && !frontendRedirectFromState.trim().isBlank()) {
+            String frontendRedirect = frontendRedirectFromState.trim();
+            String role = stateMap.getOrDefault("role", "pm").trim();
+            if (role.isBlank()) {
+                role = "pm";
+            }
+
+            String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirect)
+                    .queryParam("success", "true")
+                    .queryParam("provider", "kakao")
+                    .queryParam("kakaoAccessToken", response.kakaoAccessToken())
+                    .queryParam("accessToken", response.accessToken())
+                    .queryParam("refreshToken", response.refreshToken())
+                    .queryParam("userId", response.user().id())
+                    .queryParam("username", nickname != null ? nickname : "")
+                    .queryParam("email", email != null ? email : "")
+                    .queryParam("role", role)
+                    .build()
+                    .encode()
+                    .toUriString();
+
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(redirectUrl))
+                    .build();
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    private String encodeState(String frontendRedirect, String role) {
+        if ((frontendRedirect == null || frontendRedirect.isBlank()) &&
+                (role == null || role.isBlank())) {
+            return null;
+        }
+
+        StringBuilder stateBuilder = new StringBuilder();
+        if (frontendRedirect != null && !frontendRedirect.isBlank()) {
+            stateBuilder
+                    .append("frontendRedirect=")
+                    .append(URLEncoder.encode(frontendRedirect, StandardCharsets.UTF_8));
+        }
+        if (role != null && !role.isBlank()) {
+            if (stateBuilder.length() > 0) {
+                stateBuilder.append("&");
+            }
+            stateBuilder
+                    .append("role=")
+                    .append(URLEncoder.encode(role, StandardCharsets.UTF_8));
+        }
+        return stateBuilder.toString();
+    }
+
+    private Map<String, String> decodeState(String state) {
+        Map<String, String> result = new HashMap<>();
+        if (state == null || state.isBlank()) {
+            return result;
+        }
+
+        String decodedState = URLDecoder.decode(state, StandardCharsets.UTF_8);
+        String[] pairs = decodedState.split("&");
+        for (String pair : pairs) {
+            String[] entry = pair.split("=", 2);
+            if (entry.length != 2) {
+                continue;
+            }
+            result.put(entry[0], URLDecoder.decode(entry[1], StandardCharsets.UTF_8));
+        }
+        return result;
     }
 
     @PostMapping("/signup")

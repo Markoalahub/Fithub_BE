@@ -12,6 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import lombok.RequiredArgsConstructor;
+import markoala.fithub.demo.global.security.handler.OAuth2AuthenticationFailureHandler;
 import markoala.fithub.demo.global.security.handler.OAuth2SuccessHandler;
 import markoala.fithub.demo.global.security.jwt.JwtAuthenticationFilter;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
@@ -24,6 +25,7 @@ public class SecurityConfig {
 
         private final JwtProvider jwtProvider;
         private final OAuth2SuccessHandler successHandler;
+        private final OAuth2AuthenticationFailureHandler failureHandler;
 
         // 정적 리소스는 보안 필터를 적용하지 않음
         @Bean
@@ -52,6 +54,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/h2-console/**").permitAll()
                                                 // OAuth2 콜백
                                                 .requestMatchers("/login/oauth2/code/**").permitAll()
+                                                .requestMatchers("/oauth2/**").permitAll()
                                                 // Swagger, 인증 관련
                                                 .requestMatchers(
                                                         "/", "/login/**", "/signup/**",
@@ -93,6 +96,7 @@ public class SecurityConfig {
                                                 .redirectionEndpoint(redirect -> redirect
                                                         .baseUri("/login/oauth2/code/*"))
                                                 .successHandler(successHandler)
+                                                .failureHandler(failureHandler)
                                 )
                                 .logout(logout -> logout
                                                 .logoutUrl("/logout")
