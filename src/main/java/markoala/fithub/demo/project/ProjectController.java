@@ -65,15 +65,15 @@ public class ProjectController {
     @Operation(summary = "프로젝트 생성", description = "새로운 프로젝트를 생성합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "프로젝트 생성 성공",
-                    content = @Content(schema = @Schema(implementation = Long.class))),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
+                    content = @Content(schema = @Schema(implementation = markoala.fithub.demo.project.dto.ProjectCreateResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 또는 이름 중복")
     })
-    public ResponseEntity<Long> createProject(
+    public ResponseEntity<markoala.fithub.demo.project.dto.ProjectCreateResponse> createProject(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody ProjectCreateRequest request
     ) {
-        Long projectId = projectService.createProject(userId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(projectId);
+        markoala.fithub.demo.project.dto.ProjectCreateResponse response = projectService.createProject(userId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PatchMapping("/{projectId}")

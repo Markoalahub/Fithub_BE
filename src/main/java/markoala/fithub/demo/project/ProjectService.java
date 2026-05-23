@@ -38,17 +38,25 @@ public class ProjectService {
     }
 
     @Transactional
-    public Long createProject(Long userId, ProjectCreateRequest request) {
+    public markoala.fithub.demo.project.dto.ProjectCreateResponse createProject(Long userId, ProjectCreateRequest request) {
         if (userId == null) {
             throw new IllegalStateException("인증된 사용자만 프로젝트를 생성할 수 있습니다.");
         }
+
+        boolean isDuplicate = getUserProjects(userId).stream()
+                .anyMatch(p -> p.getName().equals(request.name()));
+        
+        if (isDuplicate) {
+            throw new markoala.fithub.demo.project.exception.DuplicateProjectException("이미 동일한 이름의 프로젝트에 참여하고 있습니다.");
+        }
+
         Project project = Project.createProject(request.name(), request.description());
         Project savedProject = projectRepository.save(project);
 
         ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, "PLANNER");
         projectMemberRepository.save(creator);
 
-        return savedProject.getId();
+        return new markoala.fithub.demo.project.dto.ProjectCreateResponse(savedProject.getId(), savedProject.getName());
     }
 
     @Transactional

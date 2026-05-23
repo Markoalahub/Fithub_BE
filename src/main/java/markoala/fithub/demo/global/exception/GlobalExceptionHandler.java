@@ -31,4 +31,18 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(ex.getHttpStatus()).body(errorBody);
     }
+
+    @ExceptionHandler(markoala.fithub.demo.project.exception.DuplicateProjectException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateProjectException(markoala.fithub.demo.project.exception.DuplicateProjectException ex) {
+        log.error("[Duplicate Project Error] {}", ex.getMessage());
+
+        Map<String, Object> errorBody = Map.of(
+                "timestamp", LocalDateTime.now().toString(),
+                "status", org.springframework.http.HttpStatus.CONFLICT.value(),
+                "error", org.springframework.http.HttpStatus.CONFLICT.getReasonPhrase(),
+                "message", ex.getMessage()
+        );
+
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(errorBody);
+    }
 }
