@@ -51,9 +51,9 @@ public class PipelineV3Controller {
                     "내부적으로 FastAPI의 /pipelines/generate-v3 엔드포인트를 호출합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "파이프라인 생성 성공",
+            @ApiResponse(responseCode = "200", description = "파이프라인 생성 성공",
                     content = @Content(schema = @Schema(implementation = PipelineV3Response.class))),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (project_id 또는 requirements 누락)"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (project_id 누락 또는 PDF 아님)"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<PipelineV3Response> generateV3Pipeline(
@@ -72,9 +72,18 @@ public class PipelineV3Controller {
             @Parameter(description = "PRD 파일 (선택)")
             @RequestPart(value = "file", required = false) MultipartFile file
     ) {
+        if (file != null && !file.isEmpty()) {
+            String originalFilename = file.getOriginalFilename();
+            String contentType = file.getContentType();
+            if ((contentType != null && !contentType.equals("application/pdf")) &&
+                (originalFilename != null && !originalFilename.toLowerCase().endsWith(".pdf"))) {
+                throw new IllegalArgumentException("지원하지 않는 파일 형식입니다. PDF 파일만 업로드 가능합니다.");
+            }
+        }
+
         PipelineV3Request request = new PipelineV3Request(projectId, requirements, category, techStack, file);
         PipelineV3Response response = pipelineV3Service.generateV3Pipeline(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.ok(response);
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -87,8 +96,8 @@ public class PipelineV3Controller {
             description = "전달받은 카테고리 목록(BE, FE 등)별로 v3 파이프라인을 자동 생성합니다."
     )
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "선택한 카테고리 파이프라인 생성 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+            @ApiResponse(responseCode = "200", description = "선택한 카테고리 파이프라인 생성 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (PDF 아님 등)"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<List<PipelineV3Response>> generateAllV3Pipelines(
@@ -107,9 +116,18 @@ public class PipelineV3Controller {
             @Parameter(description = "PRD 파일 (선택)")
             @RequestPart(value = "file", required = false) MultipartFile file
     ) {
+        if (file != null && !file.isEmpty()) {
+            String originalFilename = file.getOriginalFilename();
+            String contentType = file.getContentType();
+            if ((contentType != null && !contentType.equals("application/pdf")) &&
+                (originalFilename != null && !originalFilename.toLowerCase().endsWith(".pdf"))) {
+                throw new IllegalArgumentException("지원하지 않는 파일 형식입니다. PDF 파일만 업로드 가능합니다.");
+            }
+        }
+
         List<PipelineV3Response> responses = pipelineV3Service.generateV3PipelinesForCategories(
                 projectId, requirements, techStack, categories, file);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
+        return ResponseEntity.ok(responses);
     }
 
     // ─────────────────────────────────────────────────────────────────

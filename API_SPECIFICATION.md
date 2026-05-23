@@ -22,6 +22,32 @@ Authorization: Bearer <JWT_TOKEN>
 
 ---
 
+## 0. Auth API (OAuth 2.0 로그인)
+
+### 0-1. 소셜 로그인 (GitHub, Kakao)
+
+현재 프로젝트는 Spring Security의 OAuth2 Client를 활용하여 **서버 사이드 리다이렉트(SSR)** 방식으로 소셜 로그인을 처리합니다. 프론트엔드에서 별도의 POST API를 호출하지 않고, 제공된 URL로 브라우저를 이동(GET)시킵니다.
+
+```http
+GET /oauth2/authorization/{provider}
+```
+
+**Path Parameters**
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| provider | String | O | 소셜 로그인 제공자 (`github` 또는 `kakao`) |
+
+**인증 흐름 (동작 방식)**
+1. **로그인 요청**: 클라이언트(웹 브라우저)에서 `<a href="/oauth2/authorization/github">` 등을 클릭하여 위 엔드포인트로 이동합니다.
+2. **리다이렉트 (소셜 제공자)**: 서버(Spring Security)가 자동으로 GitHub/Kakao의 로그인 및 권한 인가 페이지로 리다이렉트시킵니다.
+3. **인가 코드 획득 및 콜백**: 사용자가 로그인을 완료하면 소셜 제공자가 백엔드의 콜백 URL(예: `/login/oauth2/code/github`)로 인가 코드(Code)를 담아 리다이렉트합니다.
+4. **유저 정보 획득 및 처리**: 백엔드에서 자체적으로 Access Token을 교환하고 소셜 유저 정보를 가져와 회원가입/로그인 처리를 완료합니다.
+5. **로그인 완료 후 리다이렉트**: 인증이 완료되면 성공 핸들러(SuccessHandler)를 통해 서비스 메인 페이지(예: `/` 또는 홈)로 최종 리다이렉트되며, 이때 세션을 생성하거나 쿠키(또는 헤더)에 자체 JWT 토큰을 담아 전달할 수 있습니다.
+
+> **주의점**: 이 엔드포인트는 JSON 응답을 반환하는 일반적인 REST API가 아닙니다. 브라우저의 페이지 이동(리다이렉트)을 기반으로 동작합니다.
+
+---
+
 ## 1. GitHub Repository 관리 API
 
 ### 1-1. 사용 가능한 GitHub 레포 조회

@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.user.User;
 import markoala.fithub.demo.user.UserService;
-import markoala.fithub.demo.global.security.jwt.JwtTokenProvider;
+import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
@@ -27,7 +27,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OAuth2SuccessHandler.class);
 
-    private final JwtTokenProvider tokenProvider;
+    private final JwtProvider tokenProvider;
     private final UserService userService;
     private final OAuth2AuthorizedClientService authorizedClientService;
 
@@ -102,7 +102,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             log.info("[OAuth2SuccessHandler] User retrieval/creation succeeded. user_id: {}", user.getId());
 
             // JWT 토큰 생성
-            String token = tokenProvider.createToken(authentication);
+            String token = tokenProvider.generateAccessToken(user);
 
             // JWT를 세션에 저장 후 /api/v1/auth/token 으로 리다이렉트
             HttpSession session = request.getSession();

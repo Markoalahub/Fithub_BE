@@ -95,9 +95,9 @@ public class PipelineV3Service {
 
         PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
 
-        log.info("[PipelineV3Service] v3 pipeline generated — id={}, version={}, steps={}",
+        log.info("[PipelineV3Service] v3 pipeline generated — id={}, version={}, feats={}",
                 response.id(), response.version(),
-                response.steps() != null ? response.steps().size() : 0);
+                response.feats() != null ? response.feats().size() : 0);
 
         return response;
     }
