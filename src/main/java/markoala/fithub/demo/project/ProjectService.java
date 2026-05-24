@@ -26,7 +26,7 @@ public class ProjectService {
 
     public Project getProject(Long projectId) {
         return projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."));
     }
 
     public List<Project> getUserProjects(Long userId) {
@@ -43,6 +43,15 @@ public class ProjectService {
             throw new IllegalStateException("인증된 사용자만 프로젝트를 생성할 수 있습니다.");
         }
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        if (user.getJobRole() != JobRole.PLANNER) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "기획자만 프로젝트를 생성할 수 있습니다."
+            );
+        }
+
         boolean isDuplicate = getUserProjects(userId).stream()
                 .anyMatch(p -> p.getName().equals(request.name()));
         
@@ -53,7 +62,7 @@ public class ProjectService {
         Project project = Project.createProject(request.name(), request.description());
         Project savedProject = projectRepository.save(project);
 
-        ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, "PLANNER");
+        ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, user.getJobRole().name());
         projectMemberRepository.save(creator);
 
         return new markoala.fithub.demo.project.dto.ProjectCreateResponse(savedProject.getId(), savedProject.getName());
@@ -93,7 +102,7 @@ public class ProjectService {
         Project project = getProject(projectId);
 
         User user = userRepository.findByNickname(nickname)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with nickname: " + nickname));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."));
 
         projectMemberRepository.findByProjectIdAndUserId(projectId, user.getId())
                 .ifPresent(m -> {
