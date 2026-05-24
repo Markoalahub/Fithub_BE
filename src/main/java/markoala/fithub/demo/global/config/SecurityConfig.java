@@ -85,7 +85,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/projects/**").authenticated()
                                                 .requestMatchers("/api/v1/issues/**").authenticated()
                                                 // 나머지 API는 개발 단계에서 허용
-                                                .requestMatchers("/api/v1/**").permitAll()
+                                                // .requestMatchers("/api/v1/**").permitAll()
                                                 // 그 외 모든 경로는 인증 필요
                                                 .anyRequest().authenticated())
                                 // API 경로는 리다이렉트 대신 401 JSON 반환

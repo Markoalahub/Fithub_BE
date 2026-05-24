@@ -136,8 +136,7 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectInviteRequest request
     ) {
-        projectService.inviteUserToProject(inviterId, projectId, request.email(), request.role());
-
+        projectService.inviteUserToProject(inviterId, projectId, request.nickname());
         Project project = projectService.getProject(projectId);
         return ResponseEntity.ok(new ProjectInviteResponse(project.getId(), project.getName()));
     }

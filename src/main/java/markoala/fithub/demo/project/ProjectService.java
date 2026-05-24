@@ -79,25 +79,29 @@ public class ProjectService {
     }
 
     @Transactional
-    public void inviteUserToProject(Long inviterId, Long projectId, String email, String role) {
+    public void inviteUserToProject(Long inviterId, Long projectId, String nickname) {
         User inviter = userRepository.findById(inviterId)
                 .orElseThrow(() -> new IllegalArgumentException("Inviter not found: " + inviterId));
 
-        if (inviter.getJobRole() != JobRole.PLANNER) {
-            throw new IllegalStateException("Only a PLANNER can invite users to a project.");
+        boolean isPlanner = inviter.getJobRole() == JobRole.PLANNER;
+        boolean isProjectMember = projectMemberRepository.findByProjectIdAndUserId(projectId, inviterId).isPresent();
+
+        if (!isPlanner && !isProjectMember) {
+            throw new IllegalStateException("프로젝트 초대 권한이 없습니다.");
         }
 
         Project project = getProject(projectId);
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+        User user = userRepository.findByNickname(nickname)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with nickname: " + nickname));
 
         projectMemberRepository.findByProjectIdAndUserId(projectId, user.getId())
                 .ifPresent(m -> {
                     throw new IllegalStateException("User is already a member of this project.");
                 });
 
-        ProjectMember projectMember = ProjectMember.createMember(project.getId(), user.getId(), role);
+        String userRole = user.getJobRole() != null ? user.getJobRole().name() : "MEMBER";
+        ProjectMember projectMember = ProjectMember.createMember(project.getId(), user.getId(), userRole);
         projectMemberRepository.save(projectMember);
     }
 

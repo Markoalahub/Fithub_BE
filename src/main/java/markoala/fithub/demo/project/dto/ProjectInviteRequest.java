@@ -3,6 +3,5 @@ package markoala.fithub.demo.project.dto;
 import jakarta.validation.constraints.NotBlank;
 
 public record ProjectInviteRequest(
-        @NotBlank String email, // 초대하려고 하는 사람의 이메일
-        @NotBlank String role // 본인의 역할
+        @NotBlank String nickname // 초대하려고 하는 사람의 닉네임
 ) {}
