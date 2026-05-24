@@ -268,4 +268,9 @@ public class UserService implements UserDetailsService {
     public boolean isEmailDuplicate(String email) {
         return userRepository.existsByEmail(email);
     }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<User> findByNickname(String nickname) {
+        return userRepository.findByNickname(nickname);
+    }
 }
