@@ -24,7 +24,7 @@ public class UserController {
         return ResponseEntity.ok(Map.of("success", true, "message", "온보딩이 완료되었습니다."));
     }
 
-    @GetMapping("/nickname")
+    @GetMapping()
     public ResponseEntity<?> checkNicknameDuplicate(@RequestParam String nickname) {
         boolean isDuplicate = userService.isNicknameDuplicate(nickname);
         return ResponseEntity.ok(Map.of(
