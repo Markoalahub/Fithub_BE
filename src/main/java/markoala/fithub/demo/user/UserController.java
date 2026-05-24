@@ -24,7 +24,7 @@ public class UserController {
         return ResponseEntity.ok(Map.of("success", true, "message", "온보딩이 완료되었습니다."));
     }
 
-    @GetMapping()
+    @GetMapping("/check-nickname")
     public ResponseEntity<?> checkNicknameDuplicate(@RequestParam String nickname) {
         boolean isDuplicate = userService.isNicknameDuplicate(nickname);
         return ResponseEntity.ok(Map.of(
@@ -40,5 +40,12 @@ public class UserController {
                 "isDuplicate", isDuplicate,
                 "message", isDuplicate ? "이미 사용 중인 이메일입니다." : "사용 가능한 이메일입니다."
         ));
+    }
+
+    @GetMapping()
+    public ResponseEntity<markoala.fithub.demo.user.dto.UserResponse> getUserByNickname(@RequestParam String nickname) {
+        User user = userService.findByNickname(nickname)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + nickname));
+        return ResponseEntity.ok(markoala.fithub.demo.user.dto.UserResponse.from(user));
     }
 }
