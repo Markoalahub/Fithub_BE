@@ -93,7 +93,10 @@ public class ProjectService {
             );
         }
 
+        // 1. 프로젝트 존재 여부를 먼저 확인하여 존재하지 않으면 404 반환
+        Project project = getProject(projectId);
 
+        // 2. 존재하는 프로젝트지만 내 프로젝트가 아닌 경우 403 반환
         projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.FORBIDDEN, "해당 프로젝트의 멤버가 아닙니다."
@@ -102,7 +105,7 @@ public class ProjectService {
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
         projectMemberRepository.deleteAll(members);
 
-        projectRepository.deleteById(projectId);
+        projectRepository.delete(project);
     }
 
     @Transactional
