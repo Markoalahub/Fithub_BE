@@ -1,4 +1,4 @@
-package markoala.fithub.demo.global.error;
+package markoala.fithub.demo.global.exception;
 
 import java.time.LocalDateTime;
 
