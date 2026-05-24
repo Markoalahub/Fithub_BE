@@ -123,7 +123,7 @@ public class ProjectService {
         Project project = getProject(projectId);
 
         User user = userRepository.findByNickname(nickname)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("User not found with nickname: " + nickname));
 
         projectMemberRepository.findByProjectIdAndUserId(projectId, user.getId())
                 .ifPresent(m -> {

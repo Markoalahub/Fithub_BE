@@ -218,6 +218,10 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
+        if (user.isRegistered()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 온보딩이 완료되었습니다.");
+        }
+
         // 1. 닉네임 중복 검사 (본인 제외)
         userRepository.findByNickname(nickname).ifPresent(existing -> {
             if (!existing.getId().equals(userId)) {
