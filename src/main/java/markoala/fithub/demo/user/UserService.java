@@ -210,4 +210,40 @@ public class UserService implements UserDetailsService {
 
         return userRepository.save(newUser);
     }
+
+    /**
+     * 온보딩 진행 (닉네임 중복 확인 및 직군 설정)
+     */
+    @Transactional
+    public User completeOnboarding(Long userId, String nickname, JobRole jobRole) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        // 1. 닉네임(username) 중복 검사 (본인 제외)
+        userRepository.findByUsername(nickname).ifPresent(existing -> {
+            if (!existing.getId().equals(userId)) {
+                throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
+            }
+        });
+
+        // 2. 닉네임 업데이트
+        user.updateUsername(nickname);
+
+        // 3. 기획자/개발자 분기 처리
+        if (user.getKakaoAccessToken() != null) {
+            // 카카오 로그인은 기획자로 간주
+            user.updateJobRole(JobRole.PLANNER);
+        } else if (user.getGithubAccessToken() != null) {
+            // 깃허브 로그인은 개발자로 간주 (입력받은 직군 필수 체크)
+            if (jobRole == null || (jobRole != JobRole.FRONTEND && jobRole != JobRole.BACKEND)) {
+                throw new IllegalArgumentException("개발자는 BACKEND 또는 FRONTEND 직군을 선택해야 합니다.");
+            }
+            user.updateJobRole(jobRole);
+        }
+
+        // 4. 가입 완료(isRegistered) 상태 처리 (이메일은 변경하지 않음)
+        user.completeRegistration(user.getEmail(), user.getJobRole());
+
+        return userRepository.save(user);
+    }
 }
