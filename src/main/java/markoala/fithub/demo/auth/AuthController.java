@@ -129,12 +129,11 @@ public class AuthController {
 
         log.info("[Auth] GitHub user info: login={}, email={}", githubLogin, githubEmail);
 
-        // 3. 사용자 존재 여부 및 기존 토큰 확인하여 신규/기존 사용자 구분
-        java.util.Optional<User> existingUser = userService.findBySocialLoginId(String.valueOf(githubId));
-        boolean isNew = existingUser.isEmpty() || existingUser.get().getGithubAccessToken() == null;
-
-        // 4. GitHub 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
+        // 3. GitHub 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
         User user = userService.findOrCreateGithubUser(githubLogin, githubEmail, githubId, githubAccessToken);
+
+        // 4. 가입 완료 여부(isRegistered)를 통해 신규/기존 사용자 구분
+        boolean isNew = !user.isRegistered();
 
         // 5. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
         String accessToken = jwtProvider.generateAccessToken(user);
@@ -242,12 +241,11 @@ public class AuthController {
 
         log.info("[Auth] Kakao user info: nickname={}, email={}", nickname, email);
 
-        // 3. 사용자 존재 여부 및 기존 토큰 확인하여 신규/기존 사용자 구분
-        java.util.Optional<User> existingUser = userService.findBySocialLoginId(String.valueOf(kakaoId));
-        boolean isNew = existingUser.isEmpty() || existingUser.get().getKakaoAccessToken() == null;
-
-        // 4. Kakao 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
+        // 3. Kakao 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
         User user = userService.findOrCreateKakaoUser(nickname, email, kakaoId, kakaoAccessToken);
+
+        // 4. 가입 완료 여부(isRegistered)를 통해 신규/기존 사용자 구분
+        boolean isNew = !user.isRegistered();
 
         // 5. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
         String accessToken = jwtProvider.generateAccessToken(user);

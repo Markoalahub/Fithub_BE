@@ -90,11 +90,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
                 log.info("[OAuth2SuccessHandler] Parsed Kakao credentials: id={}, login={}, email={}", socialLoginId, login, email);
 
-                java.util.Optional<User> existingUser = userService.findBySocialLoginId(socialLoginId);
-                isNew = existingUser.isEmpty() || existingUser.get().getKakaoAccessToken() == null;
-
                 Long kakaoIdLong = socialLoginId != null ? Long.parseLong(socialLoginId) : null;
                 user = userService.findOrCreateKakaoUser(login, email, kakaoIdLong, socialAccessToken);
+                isNew = !user.isRegistered();
             } else {
                 // GitHub attributes
                 login = (String) oauth2User.getAttribute("login");
@@ -104,11 +102,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
                 log.info("[OAuth2SuccessHandler] Parsed GitHub credentials: id={}, login={}, email={}", socialLoginId, login, email);
 
-                java.util.Optional<User> existingUser = userService.findBySocialLoginId(socialLoginId);
-                isNew = existingUser.isEmpty() || existingUser.get().getGithubAccessToken() == null;
-
                 Long githubIdLong = socialLoginId != null ? Long.parseLong(socialLoginId) : null;
                 user = userService.findOrCreateGithubUser(login, email, githubIdLong, socialAccessToken);
+                isNew = !user.isRegistered();
             }
 
             log.info("[OAuth2SuccessHandler] User retrieval/creation succeeded. user_id: {}", user.getId());

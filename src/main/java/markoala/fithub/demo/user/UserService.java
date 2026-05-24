@@ -46,8 +46,7 @@ public class UserService implements UserDetailsService {
         User newUser = User.createUser(
                 username,
                 email,
-                socialLoginId,
-                "USER"
+                socialLoginId
         );
         return userRepository.save(newUser);
     }
@@ -80,9 +79,8 @@ public class UserService implements UserDetailsService {
             targetEmail = "github_" + socialLoginId + "_" + System.currentTimeMillis() + "@fithub.temporary.com";
         }
 
-        // 3. 새로운 GitHub 사용자 생성 및 자동 가입 완료 처리
-        User newUser = User.createUser(username, targetEmail, "USER", socialLoginId);
-        newUser.completeRegistration(targetEmail, null); // 직군은 최초 가입 시 null
+        // 3. 새로운 GitHub 사용자 생성 (온보딩 전이므로 isRegistered = false 유지)
+        User newUser = User.createUser(username, targetEmail, socialLoginId);
         newUser.updateGithubAccessToken(githubAccessToken);
 
         return userRepository.save(newUser);
@@ -116,9 +114,8 @@ public class UserService implements UserDetailsService {
             targetEmail = "kakao_" + socialLoginId + "_" + System.currentTimeMillis() + "@fithub.temporary.com";
         }
 
-        // 3. 새로운 Kakao 사용자 생성 및 자동 가입 완료 처리
-        User newUser = User.createUser(username, targetEmail, "USER", socialLoginId);
-        newUser.completeRegistration(targetEmail, null); // 직군은 최초 가입 시 null
+        // 3. 새로운 Kakao 사용자 생성 (온보딩 전이므로 isRegistered = false 유지)
+        User newUser = User.createUser(username, targetEmail, socialLoginId);
         newUser.updateKakaoAccessToken(kakaoAccessToken);
 
         return userRepository.save(newUser);
@@ -199,7 +196,7 @@ public class UserService implements UserDetailsService {
         }
 
         // 4. User 객체 새로 빌드 및 생성 (완료된 상태로 저장)
-        User newUser = User.createUser(username, email, "USER", socialLoginId);
+        User newUser = User.createUser(username, email, socialLoginId);
         newUser.completeRegistration(email, jobRole);
 
         if ("GITHUB".equalsIgnoreCase(socialType)) {

@@ -24,9 +24,6 @@ public class User {
     @Column(nullable = true, unique = true)
     private String email;
 
-    @Column(nullable = false)
-    private String role;
-
     @Column(name = "social_login_id", unique = true)
     private String socialLoginId;
 
@@ -54,13 +51,12 @@ public class User {
 
     public User() {}
 
-    public User(Long id, String username, String email, String role, String socialLoginId,
+    public User(Long id, String username, String email, String socialLoginId,
                 boolean isRegistered, String githubAccessToken, String kakaoAccessToken,
                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.username = username;
         this.email = email;
-        this.role = role;
         this.socialLoginId = socialLoginId;
         this.isRegistered = isRegistered;
         this.githubAccessToken = githubAccessToken;
@@ -70,12 +66,8 @@ public class User {
     }
 
 
-    public static User createUser(String username, String email, String role, String socialLoginId) {
-        return new User(null, username, email, role, socialLoginId, false, null, null, null, null);
-    }
-
-    public void updateRole(String newRole) {
-        this.role = newRole;
+    public static User createUser(String username, String email, String socialLoginId) {
+        return new User(null, username, email, socialLoginId, false, null, null, null, null);
     }
 
     public void updateEmail(String newEmail) {
