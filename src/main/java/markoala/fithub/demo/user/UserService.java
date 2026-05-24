@@ -216,15 +216,15 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        // 1. 닉네임(username) 중복 검사 (본인 제외)
-        userRepository.findByUsername(nickname).ifPresent(existing -> {
+        // 1. 닉네임 중복 검사 (본인 제외)
+        userRepository.findByNickname(nickname).ifPresent(existing -> {
             if (!existing.getId().equals(userId)) {
                 throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
             }
         });
 
         // 2. 닉네임 업데이트
-        user.updateUsername(nickname);
+        user.updateNickname(nickname);
 
         // 3. 기획자/개발자 분기 처리
         if (user.getKakaoAccessToken() != null) {
