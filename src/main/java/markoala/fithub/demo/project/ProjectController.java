@@ -90,10 +90,13 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}")
-    @Operation(summary = "프로젝트 삭제", description = "특정 프로젝트를 삭제합니다")
+    @Operation(summary = "프로젝트 삭제", description = "기획자가 특정 프로젝트를 삭제합니다")
     @ApiResponse(responseCode = "204", description = "프로젝트 삭제 성공")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long projectId) {
-        projectService.deleteProject(projectId);
+    public ResponseEntity<Void> deleteProject(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long projectId
+    ) {
+        projectService.deleteProject(userId, projectId);
         return ResponseEntity.noContent().build();
     }
 

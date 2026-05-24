@@ -83,7 +83,24 @@ public class ProjectService {
     }
 
     @Transactional
-    public void deleteProject(Long projectId) {
+    public void deleteProject(Long userId, Long projectId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        if (user.getJobRole() != JobRole.PLANNER) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "기획자만 프로젝트를 삭제할 수 있습니다."
+            );
+        }
+
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "해당 프로젝트의 멤버가 아닙니다."
+                ));
+
+        List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
+        projectMemberRepository.deleteAll(members);
+
         projectRepository.deleteById(projectId);
     }
 
