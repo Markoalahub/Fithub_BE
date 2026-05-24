@@ -214,7 +214,7 @@ public class UserService implements UserDetailsService {
      * 온보딩 진행 (닉네임 중복 확인 및 직군 설정)
      */
     @Transactional
-    public User completeOnboarding(Long userId, String nickname, JobRole jobRole) {
+    public User completeOnboarding(Long userId, String nickname, String jobRoleStr) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
@@ -233,11 +233,20 @@ public class UserService implements UserDetailsService {
             // 카카오 로그인은 기획자로 간주
             user.updateJobRole(JobRole.PLANNER);
         } else if (user.getGithubAccessToken() != null) {
-            // 깃허브 로그인은 개발자로 간주 (입력받은 직군 필수 체크)
-            if (jobRole == null || (jobRole != JobRole.FRONTEND && jobRole != JobRole.BACKEND)) {
-                throw new IllegalArgumentException("개발자는 BACKEND 또는 FRONTEND 직군을 선택해야 합니다.");
+            // 깃허브 로그인은 개발자로 간주 (입력받은 직군 필수 체크 및 변환)
+            JobRole parsedRole;
+            try {
+                if (jobRoleStr == null) {
+                    throw new IllegalArgumentException();
+                }
+                parsedRole = JobRole.valueOf(jobRoleStr.toUpperCase());
+                if (parsedRole == JobRole.PLANNER) {
+                    throw new IllegalArgumentException();
+                }
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 직군입니다. BACKEND, FRONTEND, AI 중에 하나를 입력해 주세요.");
             }
-            user.updateJobRole(jobRole);
+            user.updateJobRole(parsedRole);
         }
 
         // 4. 가입 완료(isRegistered) 상태 처리 (이메일은 변경하지 않음)
