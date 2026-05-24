@@ -214,43 +214,30 @@ public class UserService implements UserDetailsService {
      * 온보딩 진행 (닉네임 중복 확인 및 직군 설정)
      */
     @Transactional
-    public User completeOnboarding(Long userId, String nickname, String jobRoleStr) {
+    public User completeOnboarding(Long userId, String nickname, JobRole jobRole) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        if (user.isRegistered()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 온보딩이 완료되었습니다.");
-        }
-
-        // 1. 닉네임 중복 검사 (본인 제외)
-        userRepository.findByNickname(nickname).ifPresent(existing -> {
+        // 1. 닉네임(username) 중복 검사 (본인 제외)
+        userRepository.findByUsername(nickname).ifPresent(existing -> {
             if (!existing.getId().equals(userId)) {
                 throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
             }
         });
 
         // 2. 닉네임 업데이트
-        user.updateNickname(nickname);
+        user.updateUsername(nickname);
 
         // 3. 기획자/개발자 분기 처리
         if (user.getKakaoAccessToken() != null) {
             // 카카오 로그인은 기획자로 간주
             user.updateJobRole(JobRole.PLANNER);
         } else if (user.getGithubAccessToken() != null) {
-            // 깃허브 로그인은 개발자로 간주 (입력받은 직군 필수 체크 및 변환)
-            JobRole parsedRole;
-            try {
-                if (jobRoleStr == null) {
-                    throw new IllegalArgumentException();
-                }
-                parsedRole = JobRole.valueOf(jobRoleStr.toUpperCase());
-                if (parsedRole == JobRole.PLANNER) {
-                    throw new IllegalArgumentException();
-                }
-            } catch (IllegalArgumentException e) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "존재하지 않는 직군입니다. BACKEND, FRONTEND, AI 중에 하나를 입력해 주세요.");
+            // 깃허브 로그인은 개발자로 간주 (입력받은 직군 필수 체크)
+            if (jobRole == null || (jobRole != JobRole.FRONTEND && jobRole != JobRole.BACKEND)) {
+                throw new IllegalArgumentException("개발자는 BACKEND 또는 FRONTEND 직군을 선택해야 합니다.");
             }
-            user.updateJobRole(parsedRole);
+            user.updateJobRole(jobRole);
         }
 
         // 4. 가입 완료(isRegistered) 상태 처리 (이메일은 변경하지 않음)
@@ -259,18 +246,4 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
-    public boolean isNicknameDuplicate(String nickname) {
-        return userRepository.existsByNickname(nickname);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean isEmailDuplicate(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    @Transactional(readOnly = true)
-    public java.util.Optional<User> findByNickname(String nickname) {
-        return userRepository.findByNickname(nickname);
-    }
 }

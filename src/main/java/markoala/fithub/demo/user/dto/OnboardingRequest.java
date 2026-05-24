@@ -7,5 +7,5 @@ public record OnboardingRequest(
     @NotBlank(message = "닉네임은 필수입니다.")
     String nickname,
     
-    String jobRole 
+    JobRole jobRole 
 ) {}
