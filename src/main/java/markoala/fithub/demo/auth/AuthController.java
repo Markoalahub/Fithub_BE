@@ -132,14 +132,18 @@ public class AuthController {
         // 3. GitHub 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
         User user = userService.findOrCreateGithubUser(githubLogin, githubEmail, githubId, githubAccessToken);
 
-        // 4. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
+        // 4. 가입 완료 여부(isRegistered)를 통해 신규/기존 사용자 구분
+        boolean isNew = !user.isRegistered();
+
+        // 5. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
         String accessToken = jwtProvider.generateAccessToken(user);
         String refreshToken = jwtProvider.generateRefreshToken(user);
 
-        log.info("[Auth] GitHub user authenticated and logged in. User: {}", user.getId());
+        log.info("[Auth] GitHub user authenticated and logged in. User: {}, isNew: {}", user.getId(), isNew);
 
         GithubCallbackResponse response = new GithubCallbackResponse(
                 true,
+                isNew,
                 githubAccessToken,
                 accessToken,
                 refreshToken,
@@ -166,6 +170,7 @@ public class AuthController {
                     .queryParam("username", user.getUsername() != null ? user.getUsername() : "")
                     .queryParam("email", user.getEmail() != null ? user.getEmail() : "")
                     .queryParam("role", role)
+                    .queryParam("isNew", isNew)
                     .build()
                     .encode()
                     .toUriString();
@@ -239,14 +244,18 @@ public class AuthController {
         // 3. Kakao 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
         User user = userService.findOrCreateKakaoUser(nickname, email, kakaoId, kakaoAccessToken);
 
-        // 4. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
+        // 4. 가입 완료 여부(isRegistered)를 통해 신규/기존 사용자 구분
+        boolean isNew = !user.isRegistered();
+
+        // 5. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
         String accessToken = jwtProvider.generateAccessToken(user);
         String refreshToken = jwtProvider.generateRefreshToken(user);
 
-        log.info("[Auth] Kakao user authenticated and logged in. User: {}", user.getId());
+        log.info("[Auth] Kakao user authenticated and logged in. User: {}, isNew: {}", user.getId(), isNew);
 
         KakaoCallbackResponse response = new KakaoCallbackResponse(
                 true,
+                isNew,
                 kakaoAccessToken,
                 accessToken,
                 refreshToken,
@@ -272,6 +281,7 @@ public class AuthController {
                     .queryParam("username", nickname != null ? nickname : "")
                     .queryParam("email", email != null ? email : "")
                     .queryParam("role", role)
+                    .queryParam("isNew", isNew)
                     .build()
                     .encode()
                     .toUriString();

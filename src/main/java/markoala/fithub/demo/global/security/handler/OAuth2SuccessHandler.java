@@ -71,6 +71,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             }
 
             User user;
+            boolean isNew = false;
 
             if ("kakao".equalsIgnoreCase(provider)) {
                 // Kakao attributes
@@ -91,6 +92,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
                 Long kakaoIdLong = socialLoginId != null ? Long.parseLong(socialLoginId) : null;
                 user = userService.findOrCreateKakaoUser(login, email, kakaoIdLong, socialAccessToken);
+                isNew = !user.isRegistered();
             } else {
                 // GitHub attributes
                 login = (String) oauth2User.getAttribute("login");
@@ -102,6 +104,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
                 Long githubIdLong = socialLoginId != null ? Long.parseLong(socialLoginId) : null;
                 user = userService.findOrCreateGithubUser(login, email, githubIdLong, socialAccessToken);
+                isNew = !user.isRegistered();
             }
 
             log.info("[OAuth2SuccessHandler] User retrieval/creation succeeded. user_id: {}", user.getId());
@@ -129,7 +132,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                     .queryParam("userId", user.getId())
                     .queryParam("username", user.getUsername())
                     .queryParam("email", emailValue)
-                    .queryParam("role", appRole);
+                    .queryParam("role", appRole)
+                    .queryParam("isNew", isNew);
 
             if ("kakao".equalsIgnoreCase(provider)) {
                 redirectBuilder.queryParam("kakaoAccessToken", socialAccessToken != null ? socialAccessToken : "");

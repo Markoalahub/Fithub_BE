@@ -30,15 +30,18 @@ public class ProjectController {
     private final ProjectService projectService;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final markoala.fithub.demo.application.service.PipelineV3Service pipelineV3Service;
 
     public ProjectController(
             ProjectService projectService,
             ProjectMemberRepository projectMemberRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            markoala.fithub.demo.application.service.PipelineV3Service pipelineV3Service
     ) {
         this.projectService = projectService;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
+        this.pipelineV3Service = pipelineV3Service;
     }
 
     @GetMapping("/me")
@@ -90,10 +93,13 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}")
-    @Operation(summary = "프로젝트 삭제", description = "특정 프로젝트를 삭제합니다")
+    @Operation(summary = "프로젝트 삭제", description = "기획자가 특정 프로젝트를 삭제합니다")
     @ApiResponse(responseCode = "204", description = "프로젝트 삭제 성공")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long projectId) {
-        projectService.deleteProject(projectId);
+    public ResponseEntity<Void> deleteProject(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long projectId
+    ) {
+        projectService.deleteProject(userId, projectId);
         return ResponseEntity.noContent().build();
     }
 
@@ -136,8 +142,7 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectInviteRequest request
     ) {
-        projectService.inviteUserToProject(inviterId, projectId, request.email(), request.role());
-
+        projectService.inviteUserToProject(inviterId, projectId, request.nickname());
         Project project = projectService.getProject(projectId);
         return ResponseEntity.ok(new ProjectInviteResponse(project.getId(), project.getName()));
     }
@@ -192,5 +197,30 @@ public class ProjectController {
         ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Member not found for user: " + userId));
         return ResponseEntity.ok(member);
+    }
+
+    @GetMapping("/{projectId}/pipelines")
+    @Operation(summary = "프로젝트의 파이프라인 목록 조회", description = "특정 프로젝트에 연결된 파이프라인 목록을 조회합니다. 프로젝트 멤버만 조회 가능합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "파이프라인 조회 성공"),
+            @ApiResponse(responseCode = "403", description = "해당 프로젝트의 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
+    })
+    public ResponseEntity<markoala.fithub.demo.application.dto.response.PipelineListResponse> getProjectPipelines(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long projectId
+    ) {
+        // 1. 존재하는 프로젝트인지 확인 (존재하지 않으면 404)
+        projectService.getProject(projectId);
+
+        // 2. 해당 프로젝트의 멤버인지 확인 (멤버가 아니면 403)
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        HttpStatus.FORBIDDEN, "해당 프로젝트의 파이프라인을 조회할 권한이 없습니다."
+                ));
+
+        // 3. 파이프라인 조회 (AI 서버 호출)
+        markoala.fithub.demo.application.dto.response.PipelineListResponse response = pipelineV3Service.getPipelinesByProject(projectId);
+        return ResponseEntity.ok(response);
     }
 }

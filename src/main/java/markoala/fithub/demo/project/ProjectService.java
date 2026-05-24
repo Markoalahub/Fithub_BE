@@ -26,7 +26,7 @@ public class ProjectService {
 
     public Project getProject(Long projectId) {
         return projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."));
     }
 
     public List<Project> getUserProjects(Long userId) {
@@ -43,6 +43,15 @@ public class ProjectService {
             throw new IllegalStateException("인증된 사용자만 프로젝트를 생성할 수 있습니다.");
         }
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        if (user.getJobRole() != JobRole.PLANNER) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "기획자만 프로젝트를 생성할 수 있습니다."
+            );
+        }
+
         boolean isDuplicate = getUserProjects(userId).stream()
                 .anyMatch(p -> p.getName().equals(request.name()));
         
@@ -53,7 +62,7 @@ public class ProjectService {
         Project project = Project.createProject(request.name(), request.description());
         Project savedProject = projectRepository.save(project);
 
-        ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, "PLANNER");
+        ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, user.getJobRole().name());
         projectMemberRepository.save(creator);
 
         return new markoala.fithub.demo.project.dto.ProjectCreateResponse(savedProject.getId(), savedProject.getName());
@@ -74,30 +83,55 @@ public class ProjectService {
     }
 
     @Transactional
-    public void deleteProject(Long projectId) {
-        projectRepository.deleteById(projectId);
+    public void deleteProject(Long userId, Long projectId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        if (user.getJobRole() != JobRole.PLANNER) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "기획자만 프로젝트를 삭제할 수 있습니다."
+            );
+        }
+
+        // 1. 프로젝트 존재 여부를 먼저 확인하여 존재하지 않으면 404 반환
+        Project project = getProject(projectId);
+
+        // 2. 존재하는 프로젝트지만 내 프로젝트가 아닌 경우 403 반환
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "해당 프로젝트의 멤버가 아닙니다."
+                ));
+
+        List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
+        projectMemberRepository.deleteAll(members);
+
+        projectRepository.delete(project);
     }
 
     @Transactional
-    public void inviteUserToProject(Long inviterId, Long projectId, String email, String role) {
+    public void inviteUserToProject(Long inviterId, Long projectId, String nickname) {
         User inviter = userRepository.findById(inviterId)
                 .orElseThrow(() -> new IllegalArgumentException("Inviter not found: " + inviterId));
 
-        if (inviter.getJobRole() != JobRole.PLANNER) {
-            throw new IllegalStateException("Only a PLANNER can invite users to a project.");
+        boolean isPlanner = inviter.getJobRole() == JobRole.PLANNER;
+        boolean isProjectMember = projectMemberRepository.findByProjectIdAndUserId(projectId, inviterId).isPresent();
+
+        if (!isPlanner && !isProjectMember) {
+            throw new IllegalStateException("프로젝트 초대 권한이 없습니다.");
         }
 
         Project project = getProject(projectId);
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+        User user = userRepository.findByNickname(nickname)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."));
 
         projectMemberRepository.findByProjectIdAndUserId(projectId, user.getId())
                 .ifPresent(m -> {
                     throw new IllegalStateException("User is already a member of this project.");
                 });
 
-        ProjectMember projectMember = ProjectMember.createMember(project.getId(), user.getId(), role);
+        String userRole = user.getJobRole() != null ? user.getJobRole().name() : "MEMBER";
+        ProjectMember projectMember = ProjectMember.createMember(project.getId(), user.getId(), userRole);
         projectMemberRepository.save(projectMember);
     }
 

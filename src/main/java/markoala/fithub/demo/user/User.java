@@ -19,13 +19,13 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
+    @Column(unique = true)
+    private String nickname;
+
     // OAuth 제공자가 이메일을 반환하지 않을 수 있으므로 nullable=true
     // 회원가입(signup) 완료 시 반드시 설정됨
     @Column(nullable = true, unique = true)
     private String email;
-
-    @Column(nullable = false)
-    private String role;
 
     @Column(name = "social_login_id", unique = true)
     private String socialLoginId;
@@ -54,13 +54,13 @@ public class User {
 
     public User() {}
 
-    public User(Long id, String username, String email, String role, String socialLoginId,
+    public User(Long id, String username, String nickname, String email, String socialLoginId,
                 boolean isRegistered, String githubAccessToken, String kakaoAccessToken,
                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.username = username;
+        this.nickname = nickname;
         this.email = email;
-        this.role = role;
         this.socialLoginId = socialLoginId;
         this.isRegistered = isRegistered;
         this.githubAccessToken = githubAccessToken;
@@ -70,12 +70,8 @@ public class User {
     }
 
 
-    public static User createUser(String username, String email, String role, String socialLoginId) {
-        return new User(null, username, email, role, socialLoginId, false, null, null, null, null);
-    }
-
-    public void updateRole(String newRole) {
-        this.role = newRole;
+    public static User createUser(String username, String email, String socialLoginId) {
+        return new User(null, username, null, email, socialLoginId, false, null, null, null, null);
     }
 
     public void updateEmail(String newEmail) {
@@ -84,6 +80,10 @@ public class User {
 
     public void updateUsername(String newUsername) {
         this.username = newUsername;
+    }
+
+    public void updateNickname(String newNickname) {
+        this.nickname = newNickname;
     }
 
     public void updateSocialLoginId(String newSocialLoginId) {
