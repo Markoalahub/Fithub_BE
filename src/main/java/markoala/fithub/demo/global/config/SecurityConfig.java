@@ -17,8 +17,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import lombok.RequiredArgsConstructor;
-import markoala.fithub.demo.global.security.handler.OAuth2AuthenticationFailureHandler;
-import markoala.fithub.demo.global.security.handler.OAuth2SuccessHandler;
 import markoala.fithub.demo.global.security.jwt.JwtAuthenticationFilter;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
 
@@ -32,8 +30,6 @@ import java.util.List;
 public class SecurityConfig {
 
         private final JwtProvider jwtProvider;
-        private final OAuth2SuccessHandler successHandler;
-        private final OAuth2AuthenticationFailureHandler failureHandler;
         @Value("${app.frontend.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
         private String allowedOriginPatterns;
 
@@ -63,12 +59,9 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 // H2 콘솔 허용
                                                 .requestMatchers("/h2-console/**").permitAll()
-                                                // OAuth2 콜백
-                                                .requestMatchers("/login/oauth2/code/**").permitAll()
-                                                .requestMatchers("/oauth2/**").permitAll()
                                                 // Swagger, 인증 관련
                                                 .requestMatchers(
-                                                        "/", "/login/**", "/signup/**",
+                                                        "/",
                                                         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                                                         "/api/v1/auth/token",
                                                         "/api/v1/auth/dev/token",  // [DEV ONLY] 운영 시 제거
@@ -88,31 +81,27 @@ public class SecurityConfig {
                                                 // .requestMatchers("/api/v1/**").permitAll()
                                                 // 그 외 모든 경로는 인증 필요
                                                 .anyRequest().authenticated())
-                                // API 경로는 리다이렉트 대신 401 JSON 반환
+                                // 미인증 요청은 401 JSON 반환 (리다이렉트 없음)
                                 .exceptionHandling(ex -> ex
-                                                .defaultAuthenticationEntryPointFor(
+                                                .authenticationEntryPoint(
                                                         (request, response, authException) -> {
                                                                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                                                                 response.setContentType("application/json;charset=UTF-8");
                                                                 response.getWriter().write(
                                                                         "{\"error\":\"Unauthorized\",\"message\":\"" + authException.getMessage() + "\"}"
                                                                 );
-                                                        },
-                                                        request -> request.getRequestURI().startsWith("/api/v1/")
+                                                        }
                                                 )
-                                )
-                                .oauth2Login(oauth2 -> oauth2
-                                                .loginPage("/login")
-                                                .authorizationEndpoint(auth -> auth
-                                                        .baseUri("/oauth2/authorization"))
-                                                .redirectionEndpoint(redirect -> redirect
-                                                        .baseUri("/login/oauth2/code/*"))
-                                                .successHandler(successHandler)
-                                                .failureHandler(failureHandler)
                                 )
                                 .logout(logout -> logout
                                                 .logoutUrl("/logout")
-                                                .logoutSuccessUrl("/login")
+                                                .logoutSuccessHandler((request, response, authentication) -> {
+                                                        response.setStatus(HttpServletResponse.SC_OK);
+                                                        response.setContentType("application/json;charset=UTF-8");
+                                                        response.getWriter().write(
+                                                                "{\"success\":true,\"message\":\"Logged out successfully\"}"
+                                                        );
+                                                })
                                                 .invalidateHttpSession(true)
                                                 .deleteCookies("JSESSIONID")
                                 )

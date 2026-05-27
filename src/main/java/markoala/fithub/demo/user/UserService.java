@@ -273,4 +273,18 @@ public class UserService implements UserDetailsService {
     public java.util.Optional<User> findByNickname(String nickname) {
         return userRepository.findByNickname(nickname);
     }
+
+    @Transactional(readOnly = true)
+    public boolean hasGithubAccessToken(Long githubId) {
+        return userRepository.findBySocialLoginId(String.valueOf(githubId))
+                .map(user -> user.getGithubAccessToken() != null && !user.getGithubAccessToken().isBlank())
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasKakaoAccessToken(Long kakaoId) {
+        return userRepository.findBySocialLoginId(String.valueOf(kakaoId))
+                .map(user -> user.getKakaoAccessToken() != null && !user.getKakaoAccessToken().isBlank())
+                .orElse(false);
+    }
 }

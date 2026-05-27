@@ -4,12 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GithubCallbackResponse(
-        boolean success,
         boolean isNew,
-        String gitAccessToken,
         String accessToken,
-        String refreshToken,
-        UserDto user
-) {
-    public record UserDto(Long id) {}
-}
+        String refreshToken
+) {}
