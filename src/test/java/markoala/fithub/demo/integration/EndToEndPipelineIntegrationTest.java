@@ -180,9 +180,9 @@ class EndToEndPipelineIntegrationTest {
         )).thenReturn(mockPipeline);
 
         // Generate pipeline
-        mockMvc.perform(post("/api/v1/pipelines/generate-all")
+        mockMvc.perform(multipart("/api/v1/pipelines/generate-all")
                 .param("projectId", testProject.getId().toString())
-                .contentType(MediaType.MULTIPART_FORM_DATA))
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.pipelines[0].steps.length()").value(3))
                 .andExpect(jsonPath("$.pipelines[0].steps[0].title").value("API 설계"))
@@ -219,6 +219,7 @@ class EndToEndPipelineIntegrationTest {
 
         mockMvc.perform(put("/api/v1/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("수정된 API 설계"))
@@ -365,9 +366,9 @@ class EndToEndPipelineIntegrationTest {
             eq(testProject.getId()), eq("BE"), isNull(), any()
         )).thenReturn(mockPipeline);
 
-        mockMvc.perform(post("/api/v1/pipelines/generate-all")
+        mockMvc.perform(multipart("/api/v1/pipelines/generate-all")
                 .param("projectId", testProject.getId().toString())
-                .contentType(MediaType.MULTIPART_FORM_DATA))
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.pipelines[0].steps.length()").value(2));
 
@@ -379,6 +380,7 @@ class EndToEndPipelineIntegrationTest {
 
         mockMvc.perform(put("/api/v1/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content("{\"title\":\"수정된 API 설계\",\"description\":\"GraphQL + REST\",\"is_completed\":false}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("수정된 API 설계"));
