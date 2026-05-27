@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import markoala.fithub.demo.application.dto.response.PipelineListResponse;
 import markoala.fithub.demo.application.dto.response.PipelineV3Response;
@@ -44,6 +45,7 @@ public class PipelineV3Controller {
     // v3 단일 파이프라인 생성
     // ─────────────────────────────────────────────────────────────────
 
+    @Hidden
     @PostMapping(value = "/generate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "v3 단일 파이프라인 생성",
@@ -134,6 +136,7 @@ public class PipelineV3Controller {
     // 프로젝트별 파이프라인 조회
     // ─────────────────────────────────────────────────────────────────
 
+    @Hidden
     @GetMapping("/{pipelineId}")
     @Operation(summary = "파이프라인 단건 조회", description = "특정 파이프라인의 모든 정보를 조회합니다.")
     public ResponseEntity<PipelineV3Response> getPipeline(
@@ -142,6 +145,7 @@ public class PipelineV3Controller {
         return ResponseEntity.ok(pipelineV3Service.getPipeline(pipelineId));
     }
 
+    @Hidden
     @DeleteMapping("/{pipelineId}")
     @Operation(summary = "파이프라인 삭제", description = "특정 파이프라인을 완전히 삭제합니다.")
     public ResponseEntity<Void> deletePipeline(
@@ -151,6 +155,7 @@ public class PipelineV3Controller {
         return ResponseEntity.noContent().build();
     }
 
+    @Hidden
     @GetMapping("/project/{projectId}")
     @Operation(
             summary = "프로젝트 파이프라인 조회",
@@ -172,6 +177,7 @@ public class PipelineV3Controller {
     // 파이프라인 스텝 관리
     // ─────────────────────────────────────────────────────────────────
 
+    @Hidden
     @PostMapping("/{pipelineId}/steps")
     @Operation(summary = "파이프라인 스텝 추가", description = "특정 파이프라인에 새로운 스텝을 수동으로 추가합니다.")
     public ResponseEntity<PipelineStepV3Response> addStepToPipeline(
@@ -181,6 +187,7 @@ public class PipelineV3Controller {
         return ResponseEntity.status(HttpStatus.CREATED).body(pipelineV3Service.addStepToPipeline(pipelineId, request));
     }
 
+    @Hidden
     @PatchMapping("/steps/{stepId}")
     @Operation(summary = "파이프라인 스텝 수정", description = "기존 파이프라인 스텝의 정보를 수정합니다.")
     public ResponseEntity<PipelineStepV3Response> updatePipelineStep(
@@ -190,6 +197,7 @@ public class PipelineV3Controller {
         return ResponseEntity.ok(pipelineV3Service.updatePipelineStep(stepId, request));
     }
 
+    @Hidden
     @PostMapping("/steps/{pipelineStepId}/create-issue")
     @Operation(summary = "파이프라인 스텝을 Issue로 변환", description = "사용자가 선택한 v3 파이프라인 스텝을 실제 작업 Issue로 생성하고 GitHub에 동기화합니다.")
     public ResponseEntity<markoala.fithub.demo.issue.Issue> createIssueFromStep(
@@ -207,6 +215,7 @@ public class PipelineV3Controller {
         return ResponseEntity.status(HttpStatus.CREATED).body(issue);
     }
  
+    @Hidden
     @DeleteMapping("/steps/{stepId}")
     @Operation(summary = "파이프라인 스텝 삭제", description = "특정 파이프라인 스텝을 삭제합니다.")
     public ResponseEntity<Void> deletePipelineStep(
@@ -215,6 +224,7 @@ public class PipelineV3Controller {
         pipelineV3Service.deletePipelineStep(stepId);
         return ResponseEntity.noContent().build();
     }
+    @Hidden
     @PatchMapping("/steps/{stepId}/confirm")
     @Operation(summary = "파이프라인 스텝 승인", description = "특정 회의(meetingId) 내에서 기획자와 개발자가 모두 승인했는지 확인하여 해당 스텝을 최종 승인(Approved) 처리합니다.")
     public ResponseEntity<PipelineStepV3Response> confirmPipelineStep(
@@ -224,6 +234,7 @@ public class PipelineV3Controller {
         return ResponseEntity.ok(pipelineV3Service.confirmPipelineStep(stepId, request));
     }
 
+    @Hidden
     @GetMapping("/project/{projectId}/overview")
     @Operation(summary = "프로젝트-파이프라인 통합 오버뷰 조회", description = "프로젝트의 기본 정보와 AI 파이프라인 정보를 결합한 API Composition 결과를 반환합니다.")
     public ResponseEntity<ProjectPipelineOverviewResponse> getProjectOverview(

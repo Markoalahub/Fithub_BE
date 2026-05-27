@@ -1,5 +1,6 @@
 package markoala.fithub.demo.github;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.github.dto.GithubRepositoryDto;
 import markoala.fithub.demo.github.service.GithubRepositoryService;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
+@Hidden
 public class GithubController {
 
     private final GithubRepositoryService githubRepositoryService;

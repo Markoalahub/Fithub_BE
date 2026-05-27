@@ -1,5 +1,6 @@
 package markoala.fithub.demo.issue;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/repositories")
 @Tag(name = "GitHub Repositories", description = "사용자 GitHub 레포지토리 조회 API")
+@Hidden
 public class GithubRepositoryController {
 
     private static final Logger log = LoggerFactory.getLogger(GithubRepositoryController.class);

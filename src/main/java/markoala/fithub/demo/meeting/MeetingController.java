@@ -1,5 +1,6 @@
 package markoala.fithub.demo.meeting;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,6 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/meetings")
 @Tag(name = "Meetings", description = "회의록 생성/조회 및 파이프라인 스텝 컨펌 API")
+@Hidden
 public class MeetingController {
 
     private final MeetingService meetingService;

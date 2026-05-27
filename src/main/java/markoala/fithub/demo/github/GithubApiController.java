@@ -3,6 +3,7 @@ package markoala.fithub.demo.github;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.github.dto.*;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/github")
 @RequiredArgsConstructor
+@Hidden
 public class GithubApiController {
 
     private final GithubApiService githubApiService;

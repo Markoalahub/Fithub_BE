@@ -1,5 +1,6 @@
 package markoala.fithub.demo.pipeline;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -29,6 +30,7 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/api/v1/pipelines")
 @Tag(name = "Pipelines", description = "AI 파이프라인 및 GitHub Issue 자동 생성 API")
+@Hidden
 public class PipelineController {
 
     private final PipelineService pipelineService;

@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import markoala.fithub.demo.project.dto.ProjectCreateRequest;
@@ -53,6 +54,7 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getUserProjects(userId));
     }
 
+    @Hidden
     @GetMapping("/{projectId}")
     @Operation(summary = "프로젝트 조회", description = "특정 프로젝트의 상세 정보를 조회합니다")
     @ApiResponses(value = {
@@ -79,6 +81,7 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Hidden
     @PatchMapping("/{projectId}")
     @Operation(summary = "프로젝트 정보 수정", description = "프로젝트의 이름과 설명을 수정합니다")
     @ApiResponses(value = {
@@ -103,6 +106,7 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
+    @Hidden
     @GetMapping("/{projectId}/members")
     @Operation(summary = "프로젝트 멤버 목록 조회", description = "특정 프로젝트의 모든 멤버를 조회합니다")
     @ApiResponse(responseCode = "200", description = "멤버 목록 조회 성공")
@@ -110,6 +114,7 @@ public class ProjectController {
         return ResponseEntity.ok(projectMemberRepository.findByProjectId(projectId));
     }
 
+    @Hidden
     @PostMapping("/{projectId}/members")
     @Operation(summary = "프로젝트에 멤버 추가", description = "프로젝트에 새로운 멤버를 추가합니다")
     @ApiResponses(value = {
@@ -147,6 +152,7 @@ public class ProjectController {
         return ResponseEntity.ok(new ProjectInviteResponse(project.getId(), project.getName()));
     }
 
+    @Hidden
     @PatchMapping("/{projectId}/members/{memberId}/role")
     @Operation(summary = "멤버 역할 수정", description = "프로젝트 멤버의 역할을 수정합니다")
     @ApiResponses(value = {
@@ -169,6 +175,7 @@ public class ProjectController {
         return ResponseEntity.ok(projectMemberRepository.save(member));
     }
 
+    @Hidden
     @DeleteMapping("/{projectId}/members/{memberId}")
     @Operation(summary = "멤버 삭제", description = "프로젝트에서 멤버를 제거합니다")
     @ApiResponse(responseCode = "204", description = "멤버 삭제 성공")
@@ -187,6 +194,7 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
+    @Hidden
     @GetMapping("/{projectId}/members/{userId}")
     @Operation(summary = "특정 사용자의 프로젝트 멤버 조회")
     @ApiResponse(responseCode = "200", description = "멤버 조회 성공")

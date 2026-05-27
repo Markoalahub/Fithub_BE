@@ -1,5 +1,6 @@
 package markoala.fithub.demo.issue;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -25,6 +26,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/issues")
 @Tag(name = "Issues", description = "GitHub Issue 관리 및 동기화 API")
+@Hidden
 public class IssueController {
 
     private static final Logger log = LoggerFactory.getLogger(IssueController.class);
