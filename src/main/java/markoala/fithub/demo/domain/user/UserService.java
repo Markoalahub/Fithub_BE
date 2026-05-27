@@ -21,7 +21,7 @@ public class UserService implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username));
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password("") // OAuth2는 비밀번호가 필요 없음
@@ -131,7 +131,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public User completeSignup(Long userId, String email, JobRole jobRole) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
 
         // 이미 회원가입 완료된 경우
         if (user.isRegistered()) {
@@ -172,7 +172,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public User updateJobRole(Long id, JobRole jobRole) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found for id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("해당 ID의 사용자를 찾을 수 없습니다: " + id));
         user.updateJobRole(jobRole);
         return userRepository.save(user);
     }
@@ -216,7 +216,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public User completeOnboarding(Long userId, String nickname, String jobRoleStr) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
 
         if (user.isRegistered()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 온보딩이 완료되었습니다.");

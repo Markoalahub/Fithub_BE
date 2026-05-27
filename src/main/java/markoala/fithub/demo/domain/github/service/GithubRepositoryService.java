@@ -124,7 +124,7 @@ public class GithubRepositoryService {
         if (response == null || response.containsKey("error")) {
             log.error("[GitHub] Failed to exchange code for token: {}",
                 response != null ? response.get("error_description") : "Unknown error");
-            throw new RuntimeException("GitHub OAuth token exchange failed");
+            throw new RuntimeException("GitHub OAuth 토큰 발급에 실패했습니다.");
         }
 
         String accessToken = (String) response.get("access_token");
@@ -152,7 +152,7 @@ public class GithubRepositoryService {
 
         if (userInfo == null) {
             log.error("[GitHub] Failed to fetch user information");
-            throw new RuntimeException("Failed to fetch GitHub user information");
+            throw new RuntimeException("GitHub 사용자 정보 조회에 실패했습니다.");
         }
 
         log.info("[GitHub] Successfully fetched user info for: {}", userInfo.get("login"));

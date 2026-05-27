@@ -54,7 +54,7 @@ public class PipelineService {
                 .collect(Collectors.toList());
 
         if (categories.isEmpty()) {
-            throw new IllegalArgumentException("No categorized repositories found for project: " + projectId);
+            throw new IllegalArgumentException("프로젝트에 카테고리가 지정된 저장소가 없습니다: " + projectId);
         }
 
         log.info("[Pipeline Service] Generating pipelines for project {} categories: {}", projectId, categories);
@@ -114,7 +114,7 @@ public class PipelineService {
             String token = authHeader.substring(7); // "Bearer " 제거
             Long userId = jwtProvider.getUserIdFromToken(token);
             User user = userService.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
             String githubAccessToken = user.getGithubAccessToken();
 
             gitHubIssueService.syncIssueToGitHub(savedIssue, repoUrl, githubAccessToken);
@@ -157,7 +157,7 @@ public class PipelineService {
     public List<IssueSync> syncPipelineToGitHub(Long pipelineId, Long repositoryId, String accessToken) {
         log.info("[Pipeline Service] Syncing pipeline {} to GitHub repository {}", pipelineId, repositoryId);
         GithubRepository repository = repositoryRepository.findById(repositoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Repository not found: " + repositoryId));
+                .orElseThrow(() -> new IllegalArgumentException("저장소를 찾을 수 없습니다: " + repositoryId));
 
         List<Issue> issues = issueRepository.findByRepositoryId(repositoryId);
         return issues.stream()

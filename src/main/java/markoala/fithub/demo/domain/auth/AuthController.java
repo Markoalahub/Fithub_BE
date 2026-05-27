@@ -511,7 +511,7 @@ public class AuthController {
                     return ResponseEntity.ok(DevTokenResponse.success(accessToken, user.getId(), user.getUsername()));
                 })
                 .orElseGet(() -> {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(DevTokenResponse.fail("User not found: " + userId));
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(DevTokenResponse.fail("사용자를 찾을 수 없습니다: " + userId));
                 });
     }
 
@@ -549,7 +549,7 @@ public class AuthController {
                     jobRole.name()
             );
         } else {
-            return JobRoleUpdateResponse.fail("User not found.");
+            return JobRoleUpdateResponse.fail("사용자를 찾을 수 없습니다.");
         }
     }
 }

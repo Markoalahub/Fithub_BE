@@ -41,7 +41,7 @@ public class ProjectService {
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
 
         if (user.getJobRole() != JobRole.PLANNER) {
             throw new org.springframework.web.server.ResponseStatusException(
@@ -100,7 +100,7 @@ public class ProjectService {
     @Transactional
     public void inviteUserToProject(Long inviterId, Long projectId, String nickname) {
         User inviter = userRepository.findById(inviterId)
-                .orElseThrow(() -> new IllegalArgumentException("Inviter not found: " + inviterId));
+                .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다: " + inviterId));
 
         boolean isPlanner = inviter.getJobRole() == JobRole.PLANNER;
         boolean isProjectMember = projectMemberRepository.findByProjectIdAndUserId(projectId, inviterId).isPresent();
@@ -116,7 +116,7 @@ public class ProjectService {
 
         projectMemberRepository.findByProjectIdAndUserId(projectId, user.getId())
                 .ifPresent(m -> {
-                    throw new IllegalStateException("User is already a member of this project.");
+                    throw new IllegalStateException("이미 이 프로젝트의 멤버입니다.");
                 });
 
         String userRole = user.getJobRole() != null ? user.getJobRole().name() : "MEMBER";
@@ -127,16 +127,16 @@ public class ProjectService {
     @Transactional
     public ProjectMember addMember(Long currentUserId, Long projectId, Long userId, String role) {
         projectMemberRepository.findByProjectIdAndUserId(projectId, currentUserId)
-                .orElseThrow(() -> new IllegalStateException("Only existing members can add new members to this project."));
+                .orElseThrow(() -> new IllegalStateException("기존 멤버만 이 프로젝트에 새 멤버를 초대할 수 있습니다."));
 
         Project project = getProject(projectId);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
 
         projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .ifPresent(m -> {
-                    throw new IllegalArgumentException("User is already a member of this project");
+                    throw new IllegalArgumentException("이미 이 프로젝트의 멤버입니다.");
                 });
 
         ProjectMember member = ProjectMember.createMember(project.getId(), user.getId(), role);

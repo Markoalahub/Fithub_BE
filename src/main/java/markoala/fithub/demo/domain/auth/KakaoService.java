@@ -60,7 +60,7 @@ public class KakaoService {
         if (response == null || response.containsKey("error")) {
             log.error("[Kakao] Failed to exchange code for token: {}",
                     response != null ? response.get("error_description") : "Unknown error");
-            throw new RuntimeException("Kakao OAuth token exchange failed");
+            throw new RuntimeException("카카오 OAuth 토큰 발급에 실패했습니다.");
         }
 
         String accessToken = (String) response.get("access_token");
@@ -89,7 +89,7 @@ public class KakaoService {
 
         if (userInfo == null) {
             log.error("[Kakao] Failed to fetch user information");
-            throw new RuntimeException("Failed to fetch Kakao user information");
+            throw new RuntimeException("카카오 사용자 정보 조회에 실패했습니다.");
         }
 
         log.info("[Kakao] Successfully fetched user info with id: {}", userInfo.get("id"));

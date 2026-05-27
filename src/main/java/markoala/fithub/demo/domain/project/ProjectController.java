@@ -203,7 +203,7 @@ public class ProjectController {
             @PathVariable Long userId
     ) {
         ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Member not found for user: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자의 멤버 정보를 찾을 수 없습니다: " + userId));
         return ResponseEntity.ok(member);
     }
 

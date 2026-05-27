@@ -57,7 +57,7 @@ public class RepositoryController {
             @PathVariable Long projectId
     ) {
         projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다: " + projectId));
 
         List<GithubRepositoryResponse> result = repositoryRepository.findByProjectId(projectId)
                 .stream()
@@ -85,7 +85,7 @@ public class RepositoryController {
             @Valid @RequestBody SyncGithubRepositoriesRequest request
     ) {
         projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다: " + projectId));
 
         log.info("[Repository Controller] Syncing {} GitHub repositories for project {}",
                 request.githubRepoIds().size(), projectId);
@@ -98,7 +98,7 @@ public class RepositoryController {
                             .filter(repo -> repo.id().equals(mapping.githubRepoId()))
                             .findFirst()
                             .orElseThrow(() -> new IllegalArgumentException(
-                                    "GitHub repository not found: " + mapping.githubRepoId()
+                                    "GitHub 저장소를 찾을 수 없습니다: " + mapping.githubRepoId()
                             ));
 
                     GithubRepository newRepo = GithubRepository.createRepository(
@@ -131,7 +131,7 @@ public class RepositoryController {
             @Valid @RequestBody GithubRepositoryCreateRequest request
     ) {
         projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다: " + projectId));
 
         GithubRepository repo = GithubRepository.createRepository(
                 projectId, request.repoUrl(), request.repoType(), request.category()
@@ -155,7 +155,7 @@ public class RepositoryController {
     ) {
         GithubRepository repo = repositoryRepository.findById(repositoryId)
                 .filter(r -> r.getProjectId().equals(projectId))
-                .orElseThrow(() -> new IllegalArgumentException("Repository not found: " + repositoryId));
+                .orElseThrow(() -> new IllegalArgumentException("저장소를 찾을 수 없습니다: " + repositoryId));
 
         return ResponseEntity.ok(GithubRepositoryResponse.from(repo));
     }
@@ -171,7 +171,7 @@ public class RepositoryController {
     ) {
         repositoryRepository.findById(repositoryId)
                 .filter(r -> r.getProjectId().equals(projectId))
-                .orElseThrow(() -> new IllegalArgumentException("Repository not found: " + repositoryId));
+                .orElseThrow(() -> new IllegalArgumentException("저장소를 찾을 수 없습니다: " + repositoryId));
 
         repositoryRepository.deleteById(repositoryId);
         return ResponseEntity.noContent().build();

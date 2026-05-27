@@ -63,7 +63,7 @@ public class IssueController {
             @PathVariable Long issueId
     ) {
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Issue not found: " + issueId));
+                .orElseThrow(() -> new IllegalArgumentException("이슈를 찾을 수 없습니다: " + issueId));
         return ResponseEntity.ok(issue);
     }
 
@@ -93,7 +93,7 @@ public class IssueController {
             @PathVariable Long issueId
     ) {
         IssueSync sync = issueSyncRepository.findByIssueId(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("IssueSync not found: " + issueId));
+                .orElseThrow(() -> new IllegalArgumentException("이슈 동기화 정보를 찾을 수 없습니다: " + issueId));
         return ResponseEntity.ok(sync);
     }
 
@@ -130,14 +130,14 @@ public class IssueController {
         String token = authHeader.substring(7); // "Bearer " prefix 제거
         Long userId = jwtProvider.getUserIdFromToken(token);
         User user = userService.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
         String githubAccessToken = user.getGithubAccessToken();
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Issue not found: " + issueId));
+                .orElseThrow(() -> new IllegalArgumentException("이슈를 찾을 수 없습니다: " + issueId));
 
         IssueSync sync = issueSyncRepository.findByIssueId(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("IssueSync not found for issue: " + issueId));
+                .orElseThrow(() -> new IllegalArgumentException("해당 이슈의 동기화 정보를 찾을 수 없습니다: " + issueId));
 
         gitHubIssueService.updateIssueStatus(sync, request.status(), githubAccessToken, request.repoUrl());
         issue.updateStatus(request.status());
@@ -171,11 +171,11 @@ public class IssueController {
         String token = authHeader.substring(7); // "Bearer " prefix 제거
         Long userId = jwtProvider.getUserIdFromToken(token);
         User user = userService.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
         String githubAccessToken = user.getGithubAccessToken();
 
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Issue not found: " + issueId));
+                .orElseThrow(() -> new IllegalArgumentException("이슈를 찾을 수 없습니다: " + issueId));
 
         IssueSync sync = gitHubIssueService.syncIssueToGitHub(issue, request.repoUrl(), githubAccessToken);
 

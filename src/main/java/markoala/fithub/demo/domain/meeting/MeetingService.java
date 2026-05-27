@@ -42,7 +42,7 @@ public class MeetingService {
     public MeetingLogResponse createMeeting(Long projectId, String content,
                                              Long proposerId, Long recipientId) {
         projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다: " + projectId));
 
         validateProjectMember(projectId, proposerId, "proposer");
         validateProjectMember(projectId, recipientId, "recipient");
@@ -71,7 +71,7 @@ public class MeetingService {
     public List<MeetingLogResponse> getMeetingsByProject(Long projectId) {
         log.info("[Meeting Service] Fetching meetings for project {}", projectId);
         projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다: " + projectId));
         return meetingClient.getMeetingsByProject(projectId);
     }
 

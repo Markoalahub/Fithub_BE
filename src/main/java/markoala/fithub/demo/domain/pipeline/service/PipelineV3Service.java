@@ -49,7 +49,7 @@ public class PipelineV3Service {
         
         // 1. Spring DB에서 프로젝트 정보 조회
         markoala.fithub.demo.domain.project.Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다: " + projectId));
 
         // 2. FastAPI에서 파이프라인 정보 조회
         PipelineListResponse pipelineList = pipelineV3Client.getPipelinesByProject(projectId);
@@ -193,7 +193,7 @@ public class PipelineV3Service {
             String token = authHeader.substring(7); // "Bearer " 제거
             Long userId = jwtProvider.getUserIdFromToken(token);
             markoala.fithub.demo.domain.user.User user = userService.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
             String githubAccessToken = user.getGithubAccessToken();
 
             gitHubIssueService.syncIssueToGitHub(savedIssue, repoUrl, githubAccessToken);
