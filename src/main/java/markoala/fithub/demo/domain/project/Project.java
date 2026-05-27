@@ -23,6 +23,9 @@ public class Project {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "creator_id", nullable = false)
+    private Long creatorId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -33,18 +36,19 @@ public class Project {
 
     public Project() {}
 
-    public Project(Long id, String name, String description, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Project(Long id, String name, String description, Long creatorId, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.description = description;
+        this.creatorId = creatorId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
 
 
-    public static Project createProject(String name, String description) {
-        return new Project(null, name, description, null, null);
+    public static Project createProject(String name, String description, Long creatorId) {
+        return new Project(null, name, description, creatorId, null, null);
     }
 
     public void updateName(String newName) {

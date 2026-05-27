@@ -87,7 +87,7 @@ class EndToEndPipelineIntegrationTest {
         projectRepository.deleteAll();
 
         // Create test project
-        testProject = Project.createProject("Test Project", "Test Description");
+        testProject = Project.createProject("Test Project", "Test Description", TEST_USER_ID);
         testProject = projectRepository.save(testProject);
 
         // Setup JWT mock

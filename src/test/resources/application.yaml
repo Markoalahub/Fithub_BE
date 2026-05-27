@@ -1,0 +1,86 @@
+server:
+  tomcat:
+    max-http-header-size: 16384
+    max-http-post-size: -1
+    max-http-form-post-size: -1
+    max-swallow-size: -1
+  port: 8080
+
+spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 500MB
+      max-request-size: 500MB
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: Ov23ligDmoE314bROr6l
+            client-secret: 10b2a561dc8e881581e562dd244173f16ed3f74c
+            scope:
+              - read:user
+              - repo
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+          kakao:
+            client-id: d795e10cb64141320ee4c4eed45e045c
+            client-secret: qBxshpdKIZSkagi8UWMtiicCBkuF1GES
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            client-name: Kakao
+        provider:
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  h2:
+    console:
+      enabled: true
+      settings:
+        web-allow-others: true
+
+fastapi:
+  base-url: "http://localhost:8000"
+jwt:
+  secret: "bWFya29hbGEtZml0aHViLXZlcnktc2VjdXJlLXJhbmRvbS1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZw=="
+  expiration: 3600 # 1 hour in seconds (for JwtTokenProvider)
+  access-token-expiration: 3600000 # 1 hour in ms (for JwtProvider)
+  refresh-token-expiration: 604800000 # 7 days in ms (for JwtProvider)
+github:
+  client-id: Ov23ligDmoE314bROr6l
+  client-secret: 10b2a561dc8e881581e562dd244173f16ed3f74c
+  redirect-uri: "http://localhost:8080/api/v1/auth/github/callback"
+kakao:
+  client-id: ${KAKAO_CLIENT_ID:d795e10cb64141320ee4c4eed45e045c}
+  client-secret: ${KAKAO_CLIENT_SECRET:qBxshpdKIZSkagi8UWMtiicCBkuF1GES}
+  redirect-uri: "http://localhost:8080/api/v1/auth/kakao/callback"
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+  show-actuator: false
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: TRACE
+    org.springframework.security.oauth2.client.web: TRACE
+    org.springframework.security.oauth2.client.endpoint: TRACE
+    org.springframework.security.oauth2.client.userinfo: TRACE
+    org.springframework.security.web: DEBUG

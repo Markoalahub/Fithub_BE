@@ -56,7 +56,7 @@ public class ProjectService {
             throw new markoala.fithub.demo.domain.project.exception.DuplicateProjectException("이미 동일한 이름의 프로젝트에 참여하고 있습니다.");
         }
 
-        Project project = Project.createProject(request.name(), request.description());
+        Project project = Project.createProject(request.name(), request.description(), userId);
         Project savedProject = projectRepository.save(project);
 
         ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, user.getJobRole().name());
@@ -81,23 +81,15 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(Long userId, Long projectId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-
-        if (user.getJobRole() != JobRole.PLANNER) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN, "기획자만 프로젝트를 삭제할 수 있습니다."
-            );
-        }
-
         // 1. 프로젝트 존재 여부를 먼저 확인하여 존재하지 않으면 404 반환
         Project project = getProject(projectId);
 
-        // 2. 존재하는 프로젝트지만 내 프로젝트가 아닌 경우 403 반환
-        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.FORBIDDEN, "해당 프로젝트의 멤버가 아닙니다."
-                ));
+        // 2. 프로젝트의 주인이 삭제를 요청하는지 확인 (주인이 아니면 403 반환)
+        if (!project.getCreatorId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "프로젝트를 생성한 사람만 삭제할 수 있습니다."
+            );
+        }
 
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
         projectMemberRepository.deleteAll(members);

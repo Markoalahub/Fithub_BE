@@ -122,7 +122,7 @@ public class ProjectControllerTest {
     @DisplayName("프로젝트 초대 성공")
     void inviteUserToProject_Success() throws Exception {
         ProjectInviteRequest request = new ProjectInviteRequest("newMember");
-        Project project = Project.createProject("Fithub", "desc");
+        Project project = Project.createProject("Fithub", "desc", 1L);
         
         doNothing().when(projectService).inviteUserToProject(1L, 1L, "newMember");
         when(projectService.getProject(1L)).thenReturn(project);
