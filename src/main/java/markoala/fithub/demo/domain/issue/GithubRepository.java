@@ -6,6 +6,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+import lombok.Getter;
+
+@Getter
 @Entity
 @Table(name = "repositories")
 public class GithubRepository {
@@ -46,33 +49,7 @@ public class GithubRepository {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId() {
-        return id;
-    }
 
-    public Long getProjectId() {
-        return projectId;
-    }
-
-    public String getRepoUrl() {
-        return repoUrl;
-    }
-
-    public String getRepoType() {
-        return repoType;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 
     public static GithubRepository createRepository(Long projectId, String repoUrl, String repoType, String category) {
         return new GithubRepository(null, projectId, repoUrl, repoType, category, null, null);

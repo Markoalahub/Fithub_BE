@@ -6,6 +6,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+import lombok.Getter;
+
+@Getter
 @Entity
 @Table(name = "projects")
 public class Project {
@@ -38,25 +41,7 @@ public class Project {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId() {
-        return id;
-    }
 
-    public String getName() {
-        return name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 
     public static Project createProject(String name, String description) {
         return new Project(null, name, description, null, null);

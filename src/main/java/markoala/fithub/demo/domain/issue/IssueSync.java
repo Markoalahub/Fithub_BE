@@ -6,6 +6,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+import lombok.Getter;
+
+@Getter
 @Entity
 @Table(name = "issue_syncs")
 public class IssueSync {
@@ -54,41 +57,7 @@ public class IssueSync {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId() {
-        return id;
-    }
 
-    public Long getIssueId() {
-        return issueId;
-    }
-
-    public Integer getGithubIssueNumber() {
-        return githubIssueNumber;
-    }
-
-    public Long getRepositoryId() {
-        return repositoryId;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public String getGithubUrl() {
-        return githubUrl;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 
     public static IssueSync createSync(Long issueId, Integer githubIssueNumber, Long repositoryId, String status) {
         return new IssueSync(null, issueId, githubIssueNumber, repositoryId, status, null, null, null, null);

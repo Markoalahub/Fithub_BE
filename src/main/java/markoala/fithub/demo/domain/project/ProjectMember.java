@@ -6,6 +6,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+import lombok.Getter;
+
+@Getter
 @Entity
 @Table(name = "project_members")
 public class ProjectMember {
@@ -42,29 +45,7 @@ public class ProjectMember {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId() {
-        return id;
-    }
 
-    public Long getProjectId() {
-        return projectId;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public LocalDateTime getJoinedAt() {
-        return joinedAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 
     public static ProjectMember createMember(Long projectId, Long userId, String role) {
         return new ProjectMember(null, projectId, userId, role, null, null);

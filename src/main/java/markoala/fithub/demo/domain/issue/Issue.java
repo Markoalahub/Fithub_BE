@@ -6,6 +6,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+import lombok.Getter;
+
+@Getter
 @Entity
 @Table(name = "issues")
 public class Issue {
@@ -54,41 +57,7 @@ public class Issue {
         this.updatedAt = updatedAt;
     }
 
-    public Long getId() {
-        return id;
-    }
 
-    public Long getRepositoryId() {
-        return repositoryId;
-    }
-
-    public Integer getGithubIssueNumber() {
-        return githubIssueNumber;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public Integer getPipelineStepId() {
-        return pipelineStepId;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 
     public static Issue createIssue(Long repositoryId, Integer githubIssueNumber, String title, String description, String status) {
         return new Issue(null, repositoryId, githubIssueNumber, title, description, status, null, null, null);
