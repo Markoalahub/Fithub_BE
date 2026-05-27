@@ -2,10 +2,10 @@ package markoala.fithub.demo.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
-import markoala.fithub.demo.user.JobRole;
-import markoala.fithub.demo.user.User;
-import markoala.fithub.demo.user.UserRepository;
-import markoala.fithub.demo.user.dto.OnboardingRequest;
+import markoala.fithub.demo.domain.user.JobRole;
+import markoala.fithub.demo.domain.user.User;
+import markoala.fithub.demo.domain.user.UserRepository;
+import markoala.fithub.demo.domain.user.dto.OnboardingRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

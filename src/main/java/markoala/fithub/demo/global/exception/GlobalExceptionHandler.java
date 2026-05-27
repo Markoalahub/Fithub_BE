@@ -30,8 +30,19 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(markoala.fithub.demo.project.exception.DuplicateProjectException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateProjectException(markoala.fithub.demo.project.exception.DuplicateProjectException ex) {
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex) {
+        log.warn("[Custom Error] {}", ex.getMessage());
+        return ResponseEntity.status(ex.getStatus())
+                .body(ErrorResponse.of(
+                        ex.getStatus().value(),
+                        ex.getStatus().getReasonPhrase(),
+                        ex.getMessage()
+                ));
+    }
+
+    @ExceptionHandler(markoala.fithub.demo.domain.project.exception.DuplicateProjectException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateProjectException(markoala.fithub.demo.domain.project.exception.DuplicateProjectException ex) {
         log.error("[Duplicate Project Error] {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(

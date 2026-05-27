@@ -1,0 +1,192 @@
+package markoala.fithub.demo.domain.pipeline;
+
+import markoala.fithub.demo.global.security.jwt.JwtProvider;
+import markoala.fithub.demo.domain.issue.GithubRepository;
+import markoala.fithub.demo.domain.issue.Issue;
+import markoala.fithub.demo.domain.issue.IssueRepository;
+import markoala.fithub.demo.domain.issue.IssueSync;
+import markoala.fithub.demo.domain.issue.IssueSyncRepository;
+import markoala.fithub.demo.domain.issue.RepositoryRepository;
+import markoala.fithub.demo.domain.issue.GitHubIssueService;
+import markoala.fithub.demo.domain.pipeline.dto.MultiPipelineResponse;
+import markoala.fithub.demo.domain.pipeline.dto.PipelineListResponse;
+import markoala.fithub.demo.domain.pipeline.dto.PipelineResponse;
+import markoala.fithub.demo.domain.pipeline.dto.PipelineStepCreateRequest;
+import markoala.fithub.demo.domain.pipeline.dto.PipelineStepResponse;
+import markoala.fithub.demo.domain.pipeline.dto.PipelineStepUpdateRequest;
+import markoala.fithub.demo.domain.user.User;
+import markoala.fithub.demo.domain.user.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import java.util.stream.Collectors;
+
+@Service
+@Transactional
+@RequiredArgsConstructor
+public class PipelineService {
+
+    private static final Logger log = LoggerFactory.getLogger(PipelineService.class);
+
+    private final PipelineClient pipelineClient;
+    private final GitHubIssueService gitHubIssueService;
+    private final IssueRepository issueRepository;
+    private final IssueSyncRepository issueSyncRepository;
+    private final RepositoryRepository repositoryRepository;
+    private final JwtProvider jwtProvider;
+    private final UserService userService;
+
+    /**
+     * 프로젝트 내 모든 카테고리에 대해 파이프라인 생성 (PDF PRD 지원)
+     * 프로젝트의 GithubRepository 목록에서 category를 추출해 카테고리별로 FastAPI 호출
+     */
+    public MultiPipelineResponse generatePipelinesForAllCategories(Long projectId, byte[] pdfBytes) {
+        List<GithubRepository> repos = repositoryRepository.findByProjectId(projectId);
+
+        List<String> categories = repos.stream()
+                .map(GithubRepository::getCategory)
+                .filter(c -> c != null && !c.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (categories.isEmpty()) {
+            throw new IllegalArgumentException("No categorized repositories found for project: " + projectId);
+        }
+
+        log.info("[Pipeline Service] Generating pipelines for project {} categories: {}", projectId, categories);
+
+        List<PipelineResponse> pipelines = categories.stream()
+                .map(category -> {
+                    log.info("[Pipeline Service] Generating pipeline for category: {}", category);
+                    PipelineResponse response = pipelineClient.generateAndSavePipeline(projectId, category, null,
+                            pdfBytes);
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        return new MultiPipelineResponse(projectId, pipelines.size(), pipelines);
+    }
+
+    /**
+     * 단일 파이프라인 생성
+     */
+    public PipelineResponse generatePipeline(Long projectId, String requirements, String category) {
+        log.info("[Pipeline Service] Generating pipeline for project {} with category: {}", projectId, category);
+        PipelineResponse pipelineResponse = pipelineClient.generateAndSavePipeline(projectId, category, requirements,
+                null);
+        log.info("[Pipeline Service] Pipeline generated with {} steps", pipelineResponse.steps().size());
+        return pipelineResponse;
+    }
+
+    /**
+     * 파이프라인 스텝을 Issue로 변환 (사용자 선택 시)
+     * 
+     * @param pipelineStepId FastAPI의 pipeline_step ID
+     * @param repositoryId   Spring의 repository ID
+     * @param title          Issue 제목
+     * @param description    Issue 설명
+     */
+    public Issue createIssueFromPipelineStep(Long pipelineStepId, Long repositoryId, String title, String description) {
+        log.info("[Pipeline Service] Creating issue from pipeline step {}: {}", pipelineStepId, title);
+        Issue issue = Issue.createIssue(repositoryId, null, title, description, "PENDING");
+        issue.setPipelineStepId(pipelineStepId.intValue());
+        return issueRepository.save(issue);
+    }
+
+    /**
+     * 파이프라인 스텝을 Issue로 변환 + GitHub 동기화
+     */
+    public Issue createIssueFromPipelineStepAndSync(Long pipelineStepId, Long repositoryId, String title,
+            String description, String repoUrl, String authHeader) {
+        log.info("[Pipeline Service] Creating issue and syncing to GitHub: {}", title);
+
+        // 1. Issue 생성 (DB)
+        Issue issue = Issue.createIssue(repositoryId, null, title, description, "PENDING");
+        issue.setPipelineStepId(pipelineStepId.intValue());
+        Issue savedIssue = issueRepository.save(issue);
+
+        // 2. GitHub에 동기화
+        try {
+            String token = authHeader.substring(7); // "Bearer " 제거
+            Long userId = jwtProvider.getUserIdFromToken(token);
+            User user = userService.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+            String githubAccessToken = user.getGithubAccessToken();
+
+            gitHubIssueService.syncIssueToGitHub(savedIssue, repoUrl, githubAccessToken);
+            log.info("[Pipeline Service] Issue {} synced to GitHub", savedIssue.getId());
+        } catch (Exception e) {
+            log.error("[Pipeline Service] Failed to sync issue to GitHub: {}", e.getMessage());
+            // GitHub 동기화 실패해도 이슈는 생성되도록
+        }
+
+        return savedIssue;
+    }
+
+    public PipelineListResponse getPipelinesByProject(Long projectId) {
+        log.info("[Pipeline Service] Fetching pipelines for project {}", projectId);
+        return pipelineClient.getPipelinesByProject(projectId);
+    }
+
+    public PipelineStepResponse addStepToPipeline(Long pipelineId, String title, String description) {
+        log.info("[Pipeline Service] Adding step to pipeline {}: {}", pipelineId, title);
+        PipelineStepCreateRequest request = new PipelineStepCreateRequest(title, description, false, "user_created");
+        return pipelineClient.addPipelineStep(pipelineId, request);
+    }
+
+    /**
+     * 파이프라인 스텝 수정 (title, description, is_completed)
+     * 
+     * @param stepId  FastAPI의 pipeline_step ID
+     * @param request 수정할 데이터
+     */
+    public PipelineStepResponse updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
+        log.info("[Pipeline Service] Updating pipeline step {}", stepId);
+        return pipelineClient.updatePipelineStep(stepId, request);
+    }
+
+    public void completeStep(Long stepId) {
+        log.info("[Pipeline Service] Completing pipeline step {}", stepId);
+        pipelineClient.updatePipelineStep(stepId, new PipelineStepUpdateRequest(null, null, true));
+    }
+
+    public List<IssueSync> syncPipelineToGitHub(Long pipelineId, Long repositoryId, String accessToken) {
+        log.info("[Pipeline Service] Syncing pipeline {} to GitHub repository {}", pipelineId, repositoryId);
+        GithubRepository repository = repositoryRepository.findById(repositoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Repository not found: " + repositoryId));
+
+        List<Issue> issues = issueRepository.findByRepositoryId(repositoryId);
+        return issues.stream()
+                .map(issue -> {
+                    IssueSync sync = gitHubIssueService.syncIssueToGitHub(issue, repository.getRepoUrl(), accessToken);
+                    log.info("[Pipeline Sync] Issue {} synced: {}", issue.getId(), sync.getStatus());
+                    return sync;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public Object generateUserFlow(Long projectId, String requirements, String techStack, byte[] pdfBytes) {
+        log.info("[Pipeline Service] Starting user flow session for project {}", projectId);
+        return pipelineClient.generateUserFlow(projectId, requirements, techStack, pdfBytes);
+    }
+
+    public Object answerUserFlowSession(Long flowId, String answer, Boolean confirm) {
+        log.info("[Pipeline Service] Submitting answer for user flow session {}", flowId);
+        return pipelineClient.answerUserFlowSession(flowId, answer, confirm);
+    }
+
+    public Object generateWireframe(Long userFlowId) {
+        log.info("[Pipeline Service] Generating wireframe for user flow {}", userFlowId);
+        return pipelineClient.generateWireframe(userFlowId);
+    }
+
+    public Object generatePipelineFromFlow(Long userFlowId, Long projectId, String category) {
+        log.info("[Pipeline Service] Generating development pipeline from flow {} for project {}", userFlowId,
+                projectId);
+        return pipelineClient.generatePipelineFromFlow(userFlowId, projectId, category);
+    }
+}

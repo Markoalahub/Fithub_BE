@@ -1,12 +1,12 @@
 package markoala.fithub.demo.integration;
 
-import markoala.fithub.demo.auth.KakaoService;
-import markoala.fithub.demo.auth.dto.SignupRequest;
-import markoala.fithub.demo.github.service.GithubRepositoryService;
+import markoala.fithub.demo.domain.auth.KakaoService;
+import markoala.fithub.demo.domain.auth.dto.SignupRequest;
+import markoala.fithub.demo.domain.github.service.GithubRepositoryService;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
-import markoala.fithub.demo.user.JobRole;
-import markoala.fithub.demo.user.User;
-import markoala.fithub.demo.user.UserRepository;
+import markoala.fithub.demo.domain.user.JobRole;
+import markoala.fithub.demo.domain.user.User;
+import markoala.fithub.demo.domain.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
