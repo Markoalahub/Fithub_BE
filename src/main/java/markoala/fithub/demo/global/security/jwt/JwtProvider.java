@@ -37,8 +37,6 @@ public class JwtProvider {
     public String generateAccessToken(User user) {
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
-                .claim("username", user.getUsername())
-                .claim("email", user.getEmail())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
                 .signWith(secretKey)
@@ -70,18 +68,6 @@ public class JwtProvider {
         return Long.parseLong(claims.getSubject());
     }
 
-    /**
-     * Token에서 username 추출
-     */
-    public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        return claims.get("username", String.class);
-    }
 
     /**
      * Token 유효성 검증

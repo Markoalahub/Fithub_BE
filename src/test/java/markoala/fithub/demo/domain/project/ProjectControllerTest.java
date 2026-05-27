@@ -60,7 +60,6 @@ public class ProjectControllerTest {
     void setUp() {
         when(jwtProvider.validateToken(anyString())).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(anyString())).thenReturn(1L);
-        when(jwtProvider.getUsernameFromToken(anyString())).thenReturn("testuser");
     }
 
     @Test
