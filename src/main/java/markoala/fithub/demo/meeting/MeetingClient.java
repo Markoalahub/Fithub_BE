@@ -61,4 +61,64 @@ public class MeetingClient {
                 .retrieve()
                 .body(MeetingStepRelationResponse.class);
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 번역 및 인텔리전스 (Translation Router 연동)
+    // ─────────────────────────────────────────────────────────────────
+
+    public markoala.fithub.demo.meeting.dto.TranslationSearchResponse searchMeetings(String query, int limit) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/meetings/search")
+                        .queryParam("query", query)
+                        .queryParam("limit", limit)
+                        .build())
+                .retrieve()
+                .body(markoala.fithub.demo.meeting.dto.TranslationSearchResponse.class);
+    }
+
+    public markoala.fithub.demo.meeting.dto.TranslateToTechnicalResponse translateToTechnical(Long meetingId, markoala.fithub.demo.meeting.dto.TranslateToTechnicalRequest request) {
+        return restClient.post()
+                .uri("/meetings/{meetingId}/translate-to-technical", meetingId)
+                .body(request)
+                .retrieve()
+                .body(markoala.fithub.demo.meeting.dto.TranslateToTechnicalResponse.class);
+    }
+
+    public markoala.fithub.demo.meeting.dto.TranslateToPlanningResponse translateToPlanning(Long meetingId, markoala.fithub.demo.meeting.dto.TranslateToPlanningRequest request) {
+        return restClient.post()
+                .uri("/meetings/{meetingId}/translate-to-planning", meetingId)
+                .body(request)
+                .retrieve()
+                .body(markoala.fithub.demo.meeting.dto.TranslateToPlanningResponse.class);
+    }
+
+    public void finalizeTranslationSession(Long meetingId) {
+        restClient.post()
+                .uri("/meetings/{meetingId}/finalize-translation-session", meetingId)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public Object getTranslationHistory(Long meetingId) {
+        return restClient.get()
+                .uri("/meetings/{meetingId}/translation-history", meetingId)
+                .retrieve()
+                .body(Object.class);
+    }
+
+    public MeetingLogResponse updateMeetingLog(Long meetingId, MeetingLogCreateRequest request) {
+        return restClient.patch()
+                .uri("/meetings/{meetingId}", meetingId)
+                .body(request)
+                .retrieve()
+                .body(MeetingLogResponse.class);
+    }
+
+    public void deleteMeetingLog(Long meetingId) {
+        restClient.delete()
+                .uri("/meetings/{meetingId}", meetingId)
+                .retrieve()
+                .toBodilessEntity();
+    }
 }

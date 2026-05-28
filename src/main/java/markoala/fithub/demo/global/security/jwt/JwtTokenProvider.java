@@ -41,13 +41,6 @@ public class JwtTokenProvider {
     }
 
     public String createToken(Authentication authentication) {
-        String authorities = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(","));
-
-        long now = (new Date()).getTime();
-        Date validity = new Date(now + this.tokenValidityInSeconds * 1000);
-
         // OAuth2User의 경우 login을 사용, 일반 사용자는 getName() 사용
         String subject = authentication.getName();
         if (authentication instanceof org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken oauthToken) {
@@ -56,10 +49,20 @@ public class JwtTokenProvider {
                 subject = (String) loginObj;
             }
         }
+        return createToken(subject, authentication.getAuthorities());
+    }
+
+    public String createToken(String username, Collection<? extends GrantedAuthority> authorities) {
+        String authoritiesStr = authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(","));
+
+        long now = (new Date()).getTime();
+        Date validity = new Date(now + this.tokenValidityInSeconds * 1000);
 
         return Jwts.builder()
-                .subject(subject)
-                .claim("auth", authorities)
+                .subject(username)
+                .claim("auth", authoritiesStr)
                 .signWith(key)
                 .expiration(validity)
                 .compact();

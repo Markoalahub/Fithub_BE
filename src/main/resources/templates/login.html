@@ -2,21 +2,228 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fithub - Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at 0% 0%, #1a1b36 0%, #0d0e15 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Ambient light elements in background */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(110, 68, 255, 0.4) 0%, rgba(0,0,0,0) 70%);
+            top: 10%;
+            left: 10%;
+            z-index: 1;
+            filter: blur(40px);
+            animation: pulse 10s ease-in-out infinite alternate;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 203, 5, 0.15) 0%, rgba(0,0,0,0) 75%);
+            bottom: 10%;
+            right: 10%;
+            z-index: 1;
+            filter: blur(50px);
+            animation: pulse 8s ease-in-out infinite alternate-reverse;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.2); opacity: 0.9; }
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            z-index: 10;
+            position: relative;
+            transform: translateY(0);
+            animation: floatIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes floatIn {
+            0% { transform: translateY(40px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .logo-area {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            animation: logoBounce 2s ease-in-out infinite alternate;
+            display: inline-block;
+        }
+
+        @keyframes logoBounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-6px); }
+        }
+
+        h2 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin-bottom: 2.5rem;
+            font-weight: 300;
+        }
+
+        .error-banner {
+            margin-bottom: 1rem;
+            padding: 0.7rem 0.9rem;
+            border-radius: 10px;
+            border: 1px solid rgba(248, 113, 113, 0.35);
+            background: rgba(127, 29, 29, 0.2);
+            color: #fecaca;
+            font-size: 0.85rem;
+        }
+
+        .btn-oauth {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.9rem 1.5rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        /* GitHub Button Style */
+        .btn-github {
+            background-color: #24292f;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-github:hover {
+            background-color: #333942;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(36, 41, 47, 0.4),
+                        0 0 0 2px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-github:active {
+            transform: translateY(-1px);
+        }
+
+        /* Kakao Button Style */
+        .btn-kakao {
+            background-color: #fee500;
+            color: #191919;
+            border: none;
+        }
+
+        .btn-kakao:hover {
+            background-color: #fdd835;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(254, 229, 0, 0.3),
+                        0 0 0 2px rgba(254, 229, 0, 0.4);
+        }
+
+        .btn-kakao:active {
+            transform: translateY(-1px);
+        }
+
+        .oauth-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+
+        .oauth-icon img {
+            width: 22px;
+            height: 22px;
+            object-fit: contain;
+        }
+
+        /* Subtle copyright or notice */
+        .footer-note {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 300;
+        }
+    </style>
 </head>
 <body>
 <div class="login-container">
-    <h2>Login</h2>
+    <div class="logo-area">🚀</div>
+    <h2>Fithub</h2>
+    <p class="subtitle">마르코알라와 함께 프로젝트와 이슈를 관리하세요</p>
+
+    <div th:if="${param.error}" class="error-banner">
+        로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.
+    </div>
 
     <!-- Oauth 소셜로그인 -->
-    <div class="login_github">
-        <a href="/oauth2/authorization/github">
-            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
-                 alt="GitHub Logo" width="20" style="vertical-align: middle; margin-right: 8px;">
-            👉 GitHub로 로그인
-        </a>
-    </div>
+    <a href="/oauth2/authorization/github" class="btn-oauth btn-github">
+        <div class="oauth-icon">
+            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub Logo">
+        </div>
+        <span>GitHub로 계속하기</span>
+    </a>
+
+    <a href="/oauth2/authorization/kakao" class="btn-oauth btn-kakao">
+        <div class="oauth-icon">
+            <img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png" alt="Kakao Logo">
+        </div>
+        <span>Kakao로 계속하기</span>
+    </a>
     <!-- Oauth 소셜로그인 end -->
+
+    <div class="footer-note">
+        계정이 없으신가요? 간편 로그인으로 즉시 가입 가능합니다.
+    </div>
 </div>
 </body>
 </html>

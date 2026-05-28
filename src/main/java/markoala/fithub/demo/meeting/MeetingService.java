@@ -133,4 +133,47 @@ public class MeetingService {
                         String.format("User %d (%s) is not a member of project %d", userId, role, projectId)
                 ));
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 번역 및 인텔리전스
+    // ─────────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public markoala.fithub.demo.meeting.dto.TranslationSearchResponse searchMeetings(String query, int limit) {
+        log.info("[Meeting Service] Searching translation sessions for query: {}", query);
+        return meetingClient.searchMeetings(query, limit);
+    }
+
+    public markoala.fithub.demo.meeting.dto.TranslateToTechnicalResponse translateToTechnical(Long meetingId, markoala.fithub.demo.meeting.dto.TranslateToTechnicalRequest request) {
+        log.info("[Meeting Service] Translating to technical for meeting {}", meetingId);
+        return meetingClient.translateToTechnical(meetingId, request);
+    }
+
+    public markoala.fithub.demo.meeting.dto.TranslateToPlanningResponse translateToPlanning(Long meetingId, markoala.fithub.demo.meeting.dto.TranslateToPlanningRequest request) {
+        log.info("[Meeting Service] Translating to planning for meeting {}", meetingId);
+        return meetingClient.translateToPlanning(meetingId, request);
+    }
+
+    public void finalizeTranslationSession(Long meetingId) {
+        log.info("[Meeting Service] Finalizing translation session for meeting {}", meetingId);
+        meetingClient.finalizeTranslationSession(meetingId);
+    }
+
+    @Transactional(readOnly = true)
+    public Object getTranslationHistory(Long meetingId) {
+        log.info("[Meeting Service] Fetching translation history for meeting {}", meetingId);
+        return meetingClient.getTranslationHistory(meetingId);
+    }
+
+    public MeetingLogResponse updateMeeting(Long meetingId, String content) {
+        log.info("[Meeting Service] Updating meeting {}", meetingId);
+        // 필드가 content만 있는 경우 기존 CreateRequest 재사용 가능 (필요 시 전용 DTO 생성)
+        MeetingLogCreateRequest request = new MeetingLogCreateRequest(null, content, null);
+        return meetingClient.updateMeetingLog(meetingId, request);
+    }
+
+    public void deleteMeeting(Long meetingId) {
+        log.info("[Meeting Service] Deleting meeting {}", meetingId);
+        meetingClient.deleteMeetingLog(meetingId);
+    }
 }
