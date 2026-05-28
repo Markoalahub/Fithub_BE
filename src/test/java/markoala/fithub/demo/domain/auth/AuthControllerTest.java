@@ -46,7 +46,7 @@ public class AuthControllerTest {
     @Test
     @DisplayName("GitHub 로그인 리다이렉트 성공")
     void githubLogin_Redirects() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/login")
+        mockMvc.perform(get("/auth/login")
                         .param("frontendRedirect", "http://localhost:3000/callback")
                         .param("role", "dev-be"))
                 .andExpect(status().isFound())
@@ -56,7 +56,7 @@ public class AuthControllerTest {
     @Test
     @DisplayName("Kakao 로그인 리다이렉트 성공")
     void kakaoLogin_Redirects() throws Exception {
-        mockMvc.perform(get("/api/v1/auth/kakao/login")
+        mockMvc.perform(get("/auth/kakao/login")
                         .param("frontendRedirect", "http://localhost:3000/callback")
                         .param("role", "dev-be"))
                 .andExpect(status().isFound())

@@ -26,7 +26,7 @@ import java.util.List;
  */
 @Tag(name = "GitHub API", description = "마일스톤 및 이슈 관리를 위한 GitHub 연동 API")
 @RestController
-@RequestMapping("/api/v1/github")
+@RequestMapping("/github")
 @RequiredArgsConstructor
 @Hidden
 public class GithubApiController {

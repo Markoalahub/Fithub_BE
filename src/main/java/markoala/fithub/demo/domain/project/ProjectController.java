@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/projects")
+@RequestMapping("/projects")
 @Tag(name = "Projects", description = "프로젝트 관리 및 멤버 관리 API")
 public class ProjectController {
 

@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/repositories")
+@RequestMapping("/repositories")
 @Tag(name = "GitHub Repositories", description = "사용자 GitHub 레포지토리 조회 API")
 @Hidden
 public class GithubRepositoryController {

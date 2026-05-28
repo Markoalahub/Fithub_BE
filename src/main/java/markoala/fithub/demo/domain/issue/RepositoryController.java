@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/projects/{projectId}/repositories")
+@RequestMapping("/projects/{projectId}/repositories")
 @Tag(name = "Repositories", description = "프로젝트에 연결된 GitHub 레포지토리 관리 API")
 @Hidden
 public class RepositoryController {

@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Controller
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/auth")
 @Tag(name = "Authentication", description = "GitHub/Kakao OAuth 소셜 로그인 및 회원가입 API. "
         + "두 가지 소셜 로그인(GitHub, Kakao)을 지원하며, 로그인 성공 시 서비스 전용 JWT 토큰을 발급합니다.")
 public class AuthController {
@@ -89,7 +89,7 @@ public class AuthController {
                     **GitHub 소셜 로그인의 시작점입니다.**
                     
                     이 엔드포인트를 호출하면 GitHub OAuth 인증 페이지로 자동 리다이렉트됩니다.
-                    사용자가 GitHub에서 인증을 완료하면 `/api/v1/auth/github/callback`으로 콜백됩니다.
+                    사용자가 GitHub에서 인증을 완료하면 `/auth/github/callback`으로 콜백됩니다.
                     
                     ### 사용 방법
                     1. **브라우저에서** 이 URL을 직접 열거나 `<a>` 태그로 연결합니다
@@ -98,7 +98,7 @@ public class AuthController {
                     
                     ### 호출 예시
                     ```
-                    GET /api/v1/auth/login?frontendRedirect=http://localhost:3000/auth/callback&role=dev-fe
+                    GET /auth/login?frontendRedirect=http://localhost:3000/auth/callback&role=dev-fe
                     ```
                     
                     ### 리다이렉트 결과 (frontendRedirect로 전달되는 쿼리 파라미터)
@@ -220,7 +220,7 @@ public class AuthController {
                     **Kakao 소셜 로그인의 시작점입니다.**
                     
                     이 엔드포인트를 호출하면 Kakao OAuth 인증 페이지로 자동 리다이렉트됩니다.
-                    사용자가 Kakao에서 인증을 완료하면 `/api/v1/auth/kakao/callback`으로 콜백됩니다.
+                    사용자가 Kakao에서 인증을 완료하면 `/auth/kakao/callback`으로 콜백됩니다.
                     
                     ### 사용 방법
                     1. **브라우저에서** 이 URL을 직접 열거나 `<a>` 태그로 연결합니다
@@ -229,7 +229,7 @@ public class AuthController {
                     
                     ### 호출 예시
                     ```
-                    GET /api/v1/auth/kakao/login?frontendRedirect=http://localhost:3000/auth/callback&role=pm
+                    GET /auth/kakao/login?frontendRedirect=http://localhost:3000/auth/callback&role=pm
                     ```
                     
                     ### 리다이렉트 결과 (frontendRedirect로 전달되는 쿼리 파라미터)
@@ -402,7 +402,7 @@ public class AuthController {
                     추가 정보(이름, 이메일, 직군)를 등록하고 JWT 토큰을 발급받습니다.
                     
                     ### 사용 시점
-                    1. `/api/v1/auth/login` 또는 `/api/v1/auth/kakao/login`으로 소셜 로그인 수행
+                    1. `/auth/login` 또는 `/auth/kakao/login`으로 소셜 로그인 수행
                     2. 콜백 응답에서 `isNew: true` 확인
                     3. 이 엔드포인트를 호출하여 회원가입 완료
                     

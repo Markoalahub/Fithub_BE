@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/issues")
+@RequestMapping("/issues")
 @Tag(name = "Issues", description = "GitHub Issue 관리 및 동기화 API")
 @Hidden
 public class IssueController {

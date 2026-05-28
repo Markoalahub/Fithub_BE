@@ -103,7 +103,7 @@ class GithubApiIntegrationTest {
     @Test
     @DisplayName("이슈 목록 조회 API - 통합 테스트")
     void getIssues_ShouldReturnKoreanCharactersCorrectly() throws Exception {
-        mockMvc.perform(get("/api/v1/github/repos/mockowner/mockrepo/issues")
+        mockMvc.perform(get("/github/repos/mockowner/mockrepo/issues")
                 .with(oauth2Login()).with(oauth2Client("github"))
                 .contentType(MediaType.APPLICATION_JSON))
                 .andDo(print())
@@ -119,7 +119,7 @@ class GithubApiIntegrationTest {
     void createIssue_ShouldSucceed() throws Exception {
         String requestJson = "{\"title\": \"한글 이슈 생성\", \"body\": \"본문\", \"milestoneNumber\": 1, \"assignees\": [], \"labels\": []}";
         
-        mockMvc.perform(post("/api/v1/github/repos/mockowner/mockrepo/issues")
+        mockMvc.perform(post("/github/repos/mockowner/mockrepo/issues")
                 .with(oauth2Login()).with(oauth2Client("github"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
@@ -130,7 +130,7 @@ class GithubApiIntegrationTest {
     @Test
     @DisplayName("이슈 타임라인 조회 API - 통합 테스트")
     void getTimeline_ShouldSucceed() throws Exception {
-        mockMvc.perform(get("/api/v1/github/repos/mockowner/mockrepo/timeline")
+        mockMvc.perform(get("/github/repos/mockowner/mockrepo/timeline")
                 .with(oauth2Login()).with(oauth2Client("github"))
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())

@@ -58,7 +58,7 @@ class UserIntegrationTest {
         OnboardingRequest request = new OnboardingRequest("kakaonick", "FRONTEND");
 
         // when
-        mockMvc.perform(post("/api/v1/users/onboarding")
+        mockMvc.perform(post("/users/onboarding")
                 .header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -88,7 +88,7 @@ class UserIntegrationTest {
         OnboardingRequest request = new OnboardingRequest("githubnick", "BACKEND");
 
         // when
-        mockMvc.perform(post("/api/v1/users/onboarding")
+        mockMvc.perform(post("/users/onboarding")
                 .header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -118,7 +118,7 @@ class UserIntegrationTest {
         OnboardingRequest request = new OnboardingRequest("githubnick2", "PLANNER");
 
         // when & then
-        mockMvc.perform(post("/api/v1/users/onboarding")
+        mockMvc.perform(post("/users/onboarding")
                 .header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -140,7 +140,7 @@ class UserIntegrationTest {
         OnboardingRequest request = new OnboardingRequest("newnick", "FRONTEND");
 
         // when & then
-        mockMvc.perform(post("/api/v1/users/onboarding")
+        mockMvc.perform(post("/users/onboarding")
                 .header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))

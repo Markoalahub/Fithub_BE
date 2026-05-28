@@ -53,7 +53,7 @@ public class UserControllerTest {
 
         when(userService.completeOnboarding(eq(1L), eq("newNickname"), eq("PLANNER"))).thenReturn(new User());
 
-        mockMvc.perform(post("/api/v1/users/onboarding")
+        mockMvc.perform(post("/users/onboarding")
                         .header("Authorization", "Bearer token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -66,7 +66,7 @@ public class UserControllerTest {
     void onboardUser_ValidationFail() throws Exception {
         OnboardingRequest request = new OnboardingRequest("", "PLANNER");
 
-        mockMvc.perform(post("/api/v1/users/onboarding")
+        mockMvc.perform(post("/users/onboarding")
                         .header("Authorization", "Bearer token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -78,7 +78,7 @@ public class UserControllerTest {
     void checkNicknameDuplicate_NotDuplicate() throws Exception {
         when(userService.isNicknameDuplicate("newNick")).thenReturn(false);
 
-        mockMvc.perform(get("/api/v1/users/check-nickname")
+        mockMvc.perform(get("/users/check-nickname")
                         .header("Authorization", "Bearer token")
                         .param("nickname", "newNick"))
                 .andExpect(status().isOk())
@@ -90,7 +90,7 @@ public class UserControllerTest {
     void checkNicknameDuplicate_Duplicate() throws Exception {
         when(userService.isNicknameDuplicate("newNick")).thenReturn(true);
 
-        mockMvc.perform(get("/api/v1/users/check-nickname")
+        mockMvc.perform(get("/users/check-nickname")
                         .header("Authorization", "Bearer token")
                         .param("nickname", "newNick"))
                 .andExpect(status().isOk())
@@ -105,7 +105,7 @@ public class UserControllerTest {
         // Even if empty, mapping to UserResponse should succeed.
         when(userService.findByNickname("userNick")).thenReturn(Optional.of(mockUser));
 
-        mockMvc.perform(get("/api/v1/users")
+        mockMvc.perform(get("/users")
                         .header("Authorization", "Bearer token")
                         .param("nickname", "userNick"))
                 .andExpect(status().isOk());
@@ -116,7 +116,7 @@ public class UserControllerTest {
     void getUserByNickname_NotFound() throws Exception {
         when(userService.findByNickname("userNick")).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/v1/users")
+        mockMvc.perform(get("/users")
                         .header("Authorization", "Bearer token")
                         .param("nickname", "userNick"))
                 .andExpect(status().isNotFound());

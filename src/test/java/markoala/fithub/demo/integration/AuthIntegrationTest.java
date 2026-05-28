@@ -69,7 +69,7 @@ class AuthIntegrationTest {
                 "ghp_mock_token_123"
         );
 
-        mockMvc.perform(post("/api/v1/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andDo(print())
@@ -112,7 +112,7 @@ class AuthIntegrationTest {
                 "ghp_mock_token_123"
         );
 
-        mockMvc.perform(post("/api/v1/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andDo(print())
@@ -133,7 +133,7 @@ class AuthIntegrationTest {
         userInfo.put("email", "coder@github.com");
         when(githubRepositoryService.getUserInfoFromGithub("ghp_mock_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/github/callback")
+        mockMvc.perform(get("/auth/github/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isNew").value(true))
@@ -169,7 +169,7 @@ class AuthIntegrationTest {
         userInfo.put("email", "coder@github.com");
         when(githubRepositoryService.getUserInfoFromGithub("ghp_new_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/github/callback")
+        mockMvc.perform(get("/auth/github/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isNew").value(false))
@@ -201,7 +201,7 @@ class AuthIntegrationTest {
 
         when(kakaoService.getUserInfoFromKakao("kakao_mock_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/kakao/callback")
+        mockMvc.perform(get("/auth/kakao/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isNew").value(true))
@@ -244,7 +244,7 @@ class AuthIntegrationTest {
 
         when(kakaoService.getUserInfoFromKakao("kakao_new_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/kakao/callback")
+        mockMvc.perform(get("/auth/kakao/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isNew").value(false))

@@ -2,7 +2,7 @@
 
 본 명세서는 FitHub 프로젝트의 **AI 기획/설계 엔진(Stage 1~3)** 및 **파이프라인 제어(태스크 관리, 깃허브 동기화)** 전체 API의 포맷, 파라미터, 헤더, 예시를 수록하고 있습니다.
 
-* **Base URL**: `http://localhost:8080/api/v1/pipelines`
+* **Base URL**: `http://localhost:8080/pipelines`
 * **공통 에러 응답**:
   * `401 Unauthorized`: 인증 세션 누락 또는 JWT 유효하지 않음
   * `400 Bad Request`: 필수 파라미터 누락 혹은 불일치

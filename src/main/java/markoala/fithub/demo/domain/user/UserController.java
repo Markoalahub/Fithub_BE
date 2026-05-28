@@ -15,7 +15,7 @@ import jakarta.validation.Valid;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 @Tag(name = "Users", description = "사용자 온보딩, 닉네임 중복 체크, 사용자 조회 API")
 public class UserController {

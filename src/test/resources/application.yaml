@@ -64,11 +64,11 @@ jwt:
 github:
   client-id: Ov23ligDmoE314bROr6l
   client-secret: 10b2a561dc8e881581e562dd244173f16ed3f74c
-  redirect-uri: "http://localhost:8080/api/v1/auth/github/callback"
+  redirect-uri: "http://localhost:8080/auth/github/callback"
 kakao:
   client-id: ${KAKAO_CLIENT_ID:d795e10cb64141320ee4c4eed45e045c}
   client-secret: ${KAKAO_CLIENT_SECRET:qBxshpdKIZSkagi8UWMtiicCBkuF1GES}
-  redirect-uri: "http://localhost:8080/api/v1/auth/kakao/callback"
+  redirect-uri: "http://localhost:8080/auth/kakao/callback"
 springdoc:
   swagger-ui:
     enabled: true

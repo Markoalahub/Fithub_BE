@@ -28,7 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/api/v1/pipelines")
+@RequestMapping("/pipelines")
 @Tag(name = "Pipelines", description = "AI 파이프라인 및 GitHub Issue 자동 생성 API")
 @Hidden
 public class PipelineController {

@@ -63,22 +63,22 @@ public class SecurityConfig {
                                                 .requestMatchers(
                                                         "/",
                                                         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                                                        "/api/v1/auth/token",
-                                                        "/api/v1/auth/dev/token",  // [DEV ONLY] 운영 시 제거
-                                                        "/api/v1/auth/github/callback",
-                                                        "/api/v1/auth/kakao/callback",
-                                                        "/api/v1/auth/login",
-                                                        "/api/v1/auth/kakao/login",
-                                                        "/api/v1/auth/signup"
+                                                        "/auth/token",
+                                                        "/auth/dev/token",  // [DEV ONLY] 운영 시 제거
+                                                        "/auth/github/callback",
+                                                        "/auth/kakao/callback",
+                                                        "/auth/login",
+                                                        "/auth/kakao/login",
+                                                        "/auth/signup"
                                                 ).permitAll()
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                                 // 정적 리소스
                                                 .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                                                 // 인증이 필요한 API (JWT 토큰 필수)
-                                                .requestMatchers("/api/v1/projects/**").authenticated()
-                                                .requestMatchers("/api/v1/issues/**").authenticated()
+                                                .requestMatchers("/projects/**").authenticated()
+                                                .requestMatchers("/issues/**").authenticated()
                                                 // 나머지 API는 개발 단계에서 허용
-                                                // .requestMatchers("/api/v1/**").permitAll()
+                                                // .requestMatchers("/**").permitAll()
                                                 // 그 외 모든 경로는 인증 필요
                                                 .anyRequest().authenticated())
                                 // 미인증 요청은 401 JSON 반환 (리다이렉트 없음)

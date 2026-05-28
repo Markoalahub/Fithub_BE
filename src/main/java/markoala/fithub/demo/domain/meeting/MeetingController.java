@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/meetings")
+@RequestMapping("/meetings")
 @Tag(name = "Meetings", description = "회의록 생성/조회 및 파이프라인 스텝 컨펌 API")
 @Hidden
 public class MeetingController {

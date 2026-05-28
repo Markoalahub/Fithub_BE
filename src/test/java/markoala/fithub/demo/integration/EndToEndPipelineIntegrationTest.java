@@ -132,7 +132,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/v1/projects/{projectId}/repositories/sync", testProject.getId())
+        mockMvc.perform(post("/projects/{projectId}/repositories/sync", testProject.getId())
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
@@ -180,7 +180,7 @@ class EndToEndPipelineIntegrationTest {
         )).thenReturn(mockPipeline);
 
         // Generate pipeline
-        mockMvc.perform(multipart("/api/v1/pipelines/generate-all")
+        mockMvc.perform(multipart("/pipelines/generate-all")
                 .param("projectId", testProject.getId().toString())
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
@@ -217,7 +217,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(put("/api/v1/pipelines/steps/{stepId}", 1L)
+        mockMvc.perform(put("/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
@@ -248,7 +248,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """.formatted(testRepository.getId());
 
-        mockMvc.perform(post("/api/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
+        mockMvc.perform(post("/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
@@ -308,7 +308,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
             
-        mockMvc.perform(post("/api/v1/issues/{issueId}/sync", testIssue.getId())
+        mockMvc.perform(post("/issues/{issueId}/sync", testIssue.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(syncRequestBody)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
@@ -345,7 +345,7 @@ class EndToEndPipelineIntegrationTest {
             """;
 
         var syncResponse = mockMvc.perform(
-                post("/api/v1/projects/{projectId}/repositories/sync", testProject.getId())
+                post("/projects/{projectId}/repositories/sync", testProject.getId())
                     .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(syncBody))
@@ -366,7 +366,7 @@ class EndToEndPipelineIntegrationTest {
             eq(testProject.getId()), eq("BE"), isNull(), any()
         )).thenReturn(mockPipeline);
 
-        mockMvc.perform(multipart("/api/v1/pipelines/generate-all")
+        mockMvc.perform(multipart("/pipelines/generate-all")
                 .param("projectId", testProject.getId().toString())
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
@@ -378,7 +378,7 @@ class EndToEndPipelineIntegrationTest {
         );
         when(pipelineClient.updatePipelineStep(eq(1L), any())).thenReturn(updatedStep);
 
-        mockMvc.perform(put("/api/v1/pipelines/steps/{stepId}", 1L)
+        mockMvc.perform(put("/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content("{\"title\":\"수정된 API 설계\",\"description\":\"GraphQL + REST\",\"is_completed\":false}"))
@@ -395,7 +395,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """.formatted(testRepository.getId());
 
-        mockMvc.perform(post("/api/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
+        mockMvc.perform(post("/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(issueBody))
@@ -418,7 +418,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/v1/issues/{issueId}/sync", createdIssue.getId())
+        mockMvc.perform(post("/issues/{issueId}/sync", createdIssue.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(syncBody2)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
