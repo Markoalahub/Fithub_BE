@@ -181,7 +181,7 @@ class UserServiceTest {
         when(userRepository.findBySocialLoginId("s1")).thenReturn(Optional.empty());
         when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        User result = userService.registerUser("test@test.com", "user1", JobRole.DEVELOPER, "s1", "GITHUB", "token");
+        User result = userService.registerUser("test@test.com", "user1", JobRole.BACKEND, "s1", "GITHUB", "token");
 
         assertThat(result.getGithubAccessToken()).isEqualTo("token");
         assertThat(result.isRegistered()).isTrue();
@@ -205,7 +205,7 @@ class UserServiceTest {
     void registerUser_EmailDuplicate() {
         when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(new User()));
         
-        assertThatThrownBy(() -> userService.registerUser("test@test.com", "user1", JobRole.DEVELOPER, "s1", "GITHUB", "token"))
+        assertThatThrownBy(() -> userService.registerUser("test@test.com", "user1", JobRole.BACKEND, "s1", "GITHUB", "token"))
                 .isInstanceOf(IllegalStateException.class);
     }
 

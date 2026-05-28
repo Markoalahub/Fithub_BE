@@ -92,8 +92,8 @@ class ProjectServiceTest {
 
         ProjectCreateResponse response = projectService.createProject(1L, request);
 
-        assertThat(response.id()).isEqualTo(10L);
-        assertThat(response.name()).isEqualTo("New Project");
+        assertThat(response.projectId()).isEqualTo(10L);
+        assertThat(response.projectName()).isEqualTo("New Project");
         verify(projectMemberRepository).save(any(ProjectMember.class));
     }
 
@@ -123,7 +123,7 @@ class ProjectServiceTest {
     void createProject_NotPlanner() {
         ProjectCreateRequest request = new ProjectCreateRequest("New Project", "Desc");
         User user = new User(1L, "user1", "nick1", "email@test.com", "social1", true, null, null, null, null);
-        user.updateJobRole(JobRole.DEVELOPER);
+        user.updateJobRole(JobRole.BACKEND);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> projectService.createProject(1L, request))
@@ -215,7 +215,7 @@ class ProjectServiceTest {
         
         Project project = new Project(100L, "Proj", "Desc", 1L, null, null);
         User invitee = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
-        invitee.updateJobRole(JobRole.DEVELOPER);
+        invitee.updateJobRole(JobRole.BACKEND);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
@@ -231,7 +231,7 @@ class ProjectServiceTest {
     @DisplayName("inviteUserToProject - 성공 (멤버가 초대)")
     void inviteUserToProject_MemberInvites() {
         User inviter = new User(1L, "user1", "nick1", "email1", "s1", true, null, null, null, null);
-        inviter.updateJobRole(JobRole.DEVELOPER);
+        inviter.updateJobRole(JobRole.BACKEND);
         
         Project project = new Project(100L, "Proj", "Desc", 1L, null, null);
         User invitee = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
@@ -251,7 +251,7 @@ class ProjectServiceTest {
     @DisplayName("inviteUserToProject - 실패 (권한 없음)")
     void inviteUserToProject_NoPermission() {
         User inviter = new User(1L, "user1", "nick1", "email1", "s1", true, null, null, null, null);
-        inviter.updateJobRole(JobRole.DEVELOPER);
+        inviter.updateJobRole(JobRole.BACKEND);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
         when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.empty());
@@ -291,10 +291,10 @@ class ProjectServiceTest {
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
         when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
         
-        ProjectMember member = new ProjectMember(10L, 100L, 2L, "DEVELOPER", null, null);
+        ProjectMember member = new ProjectMember(10L, 100L, 2L, "BACKEND", null, null);
         when(projectMemberRepository.save(any())).thenReturn(member);
 
-        ProjectMember result = projectService.addMember(1L, 100L, 2L, "DEVELOPER");
+        ProjectMember result = projectService.addMember(1L, 100L, 2L, "BACKEND");
 
         assertThat(result.getId()).isEqualTo(10L);
     }
@@ -304,7 +304,7 @@ class ProjectServiceTest {
     void addMember_NoPermission() {
         when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> projectService.addMember(1L, 100L, 2L, "DEVELOPER"))
+        assertThatThrownBy(() -> projectService.addMember(1L, 100L, 2L, "BACKEND"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("기존 멤버만 이 프로젝트에 새 멤버를 초대할 수 있습니다.");
     }
@@ -320,7 +320,7 @@ class ProjectServiceTest {
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
         when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(new ProjectMember()));
 
-        assertThatThrownBy(() -> projectService.addMember(1L, 100L, 2L, "DEVELOPER"))
+        assertThatThrownBy(() -> projectService.addMember(1L, 100L, 2L, "BACKEND"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("이미 이 프로젝트의 멤버입니다.");
     }
