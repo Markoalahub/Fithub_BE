@@ -31,7 +31,7 @@ import java.util.List;
  * <p>FastAPI의 {@code /pipelines/generate-v3} 엔드포인트를 Spring 서버에서 프록시 호출합니다.</p>
  */
 @RestController
-@RequestMapping("/api/v2/pipelines")
+@RequestMapping("/v2/pipelines")
 @Tag(name = "Pipelines V3", description = "AI 파이프라인 v3 (Vertical Slice) 생성 API")
 public class PipelineV3Controller {
 

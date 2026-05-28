@@ -52,7 +52,7 @@ public class PipelineV3ControllerTest {
         when(pipelineV3Service.generateV3PipelinesForCategories(any(), any(), any(), any(), any()))
                 .thenReturn(Collections.emptyList());
 
-        mockMvc.perform(multipart("/api/v2/pipelines/generate-all")
+        mockMvc.perform(multipart("/v2/pipelines/generate-all")
                         .file(file)
                         .param("project_id", "1")
                         .param("requirements", "Make a login feature")
@@ -70,7 +70,7 @@ public class PipelineV3ControllerTest {
                 "file", "test.png", "image/png", "dummy content".getBytes()
         );
 
-        mockMvc.perform(multipart("/api/v2/pipelines/generate-all")
+        mockMvc.perform(multipart("/v2/pipelines/generate-all")
                         .file(file)
                         .param("project_id", "1")
                         .param("requirements", "Make a login feature")
@@ -82,7 +82,7 @@ public class PipelineV3ControllerTest {
     @Test
     @DisplayName("파이프라인 생성 실패 - 필수 파라미터 누락 (400)")
     void generateAllV3Pipelines_MissingParamFail() throws Exception {
-        mockMvc.perform(multipart("/api/v2/pipelines/generate-all")
+        mockMvc.perform(multipart("/v2/pipelines/generate-all")
                         .param("requirements", "Missing project_id")
                         .param("categories", "BE")
                         .header("Authorization", "Bearer token"))
