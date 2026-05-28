@@ -44,47 +44,47 @@ public class PipelineV3ControllerTest {
 
     @Test
     @DisplayName("파이프라인 생성 성공 (PDF 업로드 포함)")
-    void generateAllV3Pipelines_Success() throws Exception {
+    void generateV3Pipeline_Success() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "test.pdf", "application/pdf", "dummy content".getBytes()
         );
 
-        when(pipelineV3Service.generateV3PipelinesForCategories(any(), any(), any(), any(), any()))
-                .thenReturn(Collections.emptyList());
+        when(pipelineV3Service.generateV3Pipeline(any()))
+                .thenReturn(new markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response(1L, 1L, "category", 1, "status", java.util.Collections.emptyList()));
 
-        mockMvc.perform(multipart("/pipelines/generate-all")
+        mockMvc.perform(multipart("/pipelines/generate")
                         .file(file)
                         .param("project_id", "1")
                         .param("requirements", "Make a login feature")
-                        .param("categories", "BE")
-                        .param("categories", "FE")
+                        .param("category", "BE")
+                        
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$.id").value(1));
     }
 
     @Test
     @DisplayName("파이프라인 생성 실패 - PDF가 아닌 파일 (400)")
-    void generateAllV3Pipelines_NotPdfFail() throws Exception {
+    void generateV3Pipeline_NotPdfFail() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "test.png", "image/png", "dummy content".getBytes()
         );
 
-        mockMvc.perform(multipart("/pipelines/generate-all")
+        mockMvc.perform(multipart("/pipelines/generate")
                         .file(file)
                         .param("project_id", "1")
                         .param("requirements", "Make a login feature")
-                        .param("categories", "BE")
+                        .param("category", "BE")
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     @DisplayName("파이프라인 생성 실패 - 필수 파라미터 누락 (400)")
-    void generateAllV3Pipelines_MissingParamFail() throws Exception {
-        mockMvc.perform(multipart("/pipelines/generate-all")
+    void generateV3Pipeline_MissingParamFail() throws Exception {
+        mockMvc.perform(multipart("/pipelines/generate")
                         .param("requirements", "Missing project_id")
-                        .param("categories", "BE")
+                        .param("category", "BE")
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isBadRequest());
     }

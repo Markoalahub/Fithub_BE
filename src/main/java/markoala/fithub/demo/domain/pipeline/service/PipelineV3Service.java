@@ -90,38 +90,6 @@ public class PipelineV3Service {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // v3 전체 카테고리 파이프라인 일괄 생성
-    // ─────────────────────────────────────────────────────────────────
-
-    /**
-     * 지정된 카테고리 목록(FE/BE/AI 등)에 대해 v3 파이프라인 일괄 생성.
-     *
-     * @param projectId  프로젝트 ID
-     * @param categories 대상 카테고리 목록
-     * @param prdFile    PRD 파일 (선택)
-     * @return 카테고리별로 생성된 PipelineV3Response 목록
-     */
-    public List<PipelineV3Response> generateV3PipelinesForCategories(Long projectId,
-                                                                    String requirements,
-                                                                    String techStack,
-                                                                    List<String> categories,
-                                                                    MultipartFile file) {
-        if (categories == null || categories.isEmpty()) {
-            throw new IllegalArgumentException("대상 카테고리가 지정되지 않았습니다.");
-        }
-
-        log.info("[PipelineV3Service] Generating v3 pipelines for project {} — categories: {}", projectId, categories);
-
-        return categories.stream()
-                .map(category -> {
-                    log.info("[PipelineV3Service] Generating v3 pipeline for category: {}", category);
-                    PipelineV3Request request = new PipelineV3Request(projectId, requirements, category, techStack, file);
-                    return pipelineV3Client.generateV3Pipeline(request);
-                })
-                .collect(Collectors.toList());
-    }
-
-    // ─────────────────────────────────────────────────────────────────
     // 조회 / 스텝 추가 / 스텝 수정
     // ─────────────────────────────────────────────────────────────────
 
