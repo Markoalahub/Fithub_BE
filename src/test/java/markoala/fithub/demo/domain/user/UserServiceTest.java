@@ -87,7 +87,7 @@ class UserServiceTest {
     @DisplayName("findOrCreateGithubUser - 새 사용자 (이름 충돌)")
     void findOrCreateGithubUser_New_NameConflict() {
         when(userRepository.findBySocialLoginId("123")).thenReturn(Optional.empty());
-        when(userRepository.findByUsername("githubLogin")).thenReturn(Optional.of(new User()));
+        when(userRepository.findByUsername("githubLogin")).thenReturn(Optional.of(User.createUser("dummy", "dummy@test.com", "dummy_social")));
         when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.empty());
         when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -127,7 +127,7 @@ class UserServiceTest {
     @DisplayName("findOrCreateKakaoUser - 새 사용자 (이름 충돌)")
     void findOrCreateKakaoUser_New_NameConflict() {
         when(userRepository.findBySocialLoginId("123")).thenReturn(Optional.empty());
-        when(userRepository.findByUsername("kakaoNick")).thenReturn(Optional.of(new User()));
+        when(userRepository.findByUsername("kakaoNick")).thenReturn(Optional.of(User.createUser("dummy", "dummy@test.com", "dummy_social")));
         when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.empty());
         when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -203,7 +203,7 @@ class UserServiceTest {
     @Test
     @DisplayName("registerUser - 이메일 중복")
     void registerUser_EmailDuplicate() {
-        when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(new User()));
+        when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(User.createUser("dummy", "dummy@test.com", "dummy_social")));
         
         assertThatThrownBy(() -> userService.registerUser("test@test.com", "user1", JobRole.BACKEND, "s1", "GITHUB", "token"))
                 .isInstanceOf(IllegalStateException.class);

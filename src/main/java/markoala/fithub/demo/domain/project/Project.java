@@ -7,8 +7,11 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "projects")
 public class Project {
@@ -34,7 +37,7 @@ public class Project {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public Project() {}
+    
 
     public Project(Long id, String name, String description, Long creatorId, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;

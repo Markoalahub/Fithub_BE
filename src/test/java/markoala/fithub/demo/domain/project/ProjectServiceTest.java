@@ -220,7 +220,7 @@ class ProjectServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(userRepository.findByNickname("nick2")).thenReturn(Optional.of(invitee));
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
 
         projectService.inviteUserToProject(1L, 100L, "nick2");
 
@@ -237,10 +237,10 @@ class ProjectServiceTest {
         User invitee = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(new ProjectMember()));
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(ProjectMember.createMember(100L, 1L, "MEMBER")));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(userRepository.findByNickname("nick2")).thenReturn(Optional.of(invitee));
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
 
         projectService.inviteUserToProject(1L, 100L, "nick2");
 
@@ -254,7 +254,7 @@ class ProjectServiceTest {
         inviter.updateJobRole(JobRole.BACKEND);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.empty());
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> projectService.inviteUserToProject(1L, 100L, "nick2"))
                 .isInstanceOf(IllegalStateException.class)
@@ -273,7 +273,7 @@ class ProjectServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(userRepository.findByNickname("nick2")).thenReturn(Optional.of(invitee));
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(new ProjectMember()));
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(ProjectMember.createMember(100L, 1L, "MEMBER")));
 
         assertThatThrownBy(() -> projectService.inviteUserToProject(1L, 100L, "nick2"))
                 .isInstanceOf(IllegalStateException.class)
@@ -286,10 +286,10 @@ class ProjectServiceTest {
         Project project = new Project(100L, "Proj", "Desc", 1L, null, null);
         User user = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
 
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(new ProjectMember()));
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(ProjectMember.createMember(100L, 1L, "MEMBER")));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
         
         ProjectMember member = new ProjectMember(10L, 100L, 2L, "BACKEND", null, null);
         when(projectMemberRepository.save(any())).thenReturn(member);
@@ -302,7 +302,7 @@ class ProjectServiceTest {
     @Test
     @DisplayName("addMember - 실패 (초대자 권한 없음)")
     void addMember_NoPermission() {
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.empty());
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> projectService.addMember(1L, 100L, 2L, "BACKEND"))
                 .isInstanceOf(IllegalStateException.class)
@@ -315,10 +315,10 @@ class ProjectServiceTest {
         Project project = new Project(100L, "Proj", "Desc", 1L, null, null);
         User user = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
 
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(new ProjectMember()));
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(ProjectMember.createMember(100L, 1L, "MEMBER")));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(new ProjectMember()));
+        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(ProjectMember.createMember(100L, 1L, "MEMBER")));
 
         assertThatThrownBy(() -> projectService.addMember(1L, 100L, 2L, "BACKEND"))
                 .isInstanceOf(IllegalArgumentException.class)

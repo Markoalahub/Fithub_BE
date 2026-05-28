@@ -51,7 +51,7 @@ public class UserControllerTest {
     void onboardUser_Success() throws Exception {
         OnboardingRequest request = new OnboardingRequest("newNickname", "PLANNER");
 
-        when(userService.completeOnboarding(eq(1L), eq("newNickname"), eq("PLANNER"))).thenReturn(new User());
+        when(userService.completeOnboarding(eq(1L), eq("newNickname"), eq("PLANNER"))).thenReturn(User.createUser("dummy", "dummy@test.com", "dummy_social"));
 
         mockMvc.perform(post("/users/onboarding")
                         .header("Authorization", "Bearer token")
@@ -100,7 +100,7 @@ public class UserControllerTest {
     @Test
     @DisplayName("닉네임으로 사용자 조회 성공")
     void getUserByNickname_Success() throws Exception {
-        User mockUser = new User();
+        User mockUser = User.createUser("dummy", "dummy@test.com", "dummy_social");
         // Since User id is private without setter, we can just return a non-null User, UserResponse mapping handles it.
         // Even if empty, mapping to UserResponse should succeed.
         when(userService.findByNickname("userNick")).thenReturn(Optional.of(mockUser));

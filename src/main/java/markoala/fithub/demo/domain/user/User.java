@@ -2,11 +2,14 @@ package markoala.fithub.demo.domain.user;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Getter
 @Table(name = "users")
@@ -52,7 +55,7 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public User() {}
+    
 
     public User(Long id, String username, String nickname, String email, String socialLoginId,
                 boolean isRegistered, String githubAccessToken, String kakaoAccessToken,
