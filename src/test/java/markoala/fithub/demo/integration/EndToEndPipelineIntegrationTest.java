@@ -180,7 +180,7 @@ class EndToEndPipelineIntegrationTest {
         )).thenReturn(mockPipeline);
 
         // Generate pipeline
-        mockMvc.perform(multipart("/pipelines/generate-all")
+        mockMvc.perform(multipart("/v1/pipelines/generate-all")
                 .param("projectId", testProject.getId().toString())
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
@@ -217,7 +217,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(put("/pipelines/steps/{stepId}", 1L)
+        mockMvc.perform(put("/v1/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
@@ -248,7 +248,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """.formatted(testRepository.getId());
 
-        mockMvc.perform(post("/pipelines/steps/{pipelineStepId}/create-issue", 1L)
+        mockMvc.perform(post("/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
@@ -366,7 +366,7 @@ class EndToEndPipelineIntegrationTest {
             eq(testProject.getId()), eq("BE"), isNull(), any()
         )).thenReturn(mockPipeline);
 
-        mockMvc.perform(multipart("/pipelines/generate-all")
+        mockMvc.perform(multipart("/v1/pipelines/generate-all")
                 .param("projectId", testProject.getId().toString())
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
                 .andExpect(status().isCreated())
@@ -378,7 +378,7 @@ class EndToEndPipelineIntegrationTest {
         );
         when(pipelineClient.updatePipelineStep(eq(1L), any())).thenReturn(updatedStep);
 
-        mockMvc.perform(put("/pipelines/steps/{stepId}", 1L)
+        mockMvc.perform(put("/v1/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content("{\"title\":\"수정된 API 설계\",\"description\":\"GraphQL + REST\",\"is_completed\":false}"))
@@ -395,7 +395,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """.formatted(testRepository.getId());
 
-        mockMvc.perform(post("/pipelines/steps/{pipelineStepId}/create-issue", 1L)
+        mockMvc.perform(post("/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(issueBody))
