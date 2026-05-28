@@ -45,7 +45,6 @@ public class PipelineV3Controller {
     // v3 단일 파이프라인 생성
     // ─────────────────────────────────────────────────────────────────
 
-    @Hidden
     @PostMapping(value = "/generate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "v3 단일 파이프라인 생성",
