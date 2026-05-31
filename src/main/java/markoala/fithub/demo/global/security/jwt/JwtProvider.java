@@ -3,7 +3,7 @@ package markoala.fithub.demo.global.security.jwt;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import markoala.fithub.demo.user.User;
+import markoala.fithub.demo.domain.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,8 +37,6 @@ public class JwtProvider {
     public String generateAccessToken(User user) {
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
-                .claim("username", user.getUsername())
-                .claim("email", user.getEmail())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
                 .signWith(secretKey)
@@ -70,18 +68,6 @@ public class JwtProvider {
         return Long.parseLong(claims.getSubject());
     }
 
-    /**
-     * Token에서 username 추출
-     */
-    public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        return claims.get("username", String.class);
-    }
 
     /**
      * Token 유효성 검증

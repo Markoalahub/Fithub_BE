@@ -17,7 +17,7 @@ sequenceDiagram
     participant DB as 로컬 데이터베이스 (H2)
 
     Note over PM, DB: [Stage 1: 기획 분석 및 양방향 인터뷰]
-    PM->>SB: POST /api/v1/pipelines/generate-userflow (requirements, prdFile)
+    PM->>SB: POST /pipelines/generate-userflow (requirements, prdFile)
     SB->>FA: Multipart POST /pipelines/generate-userflow
     FA-->>SB: {flow_id, status: "interviewing", question: "첫 기획 질문..."}
     SB-->>PM: {flow_id, status: "interviewing", question: "첫 기획 질문..."}
@@ -37,14 +37,14 @@ sequenceDiagram
     SB-->>PM: {flow_id, status: "completed", nodes: [...] }
 
     Note over PM, DB: [Stage 2: Lo-Fi ASCII 와이어프레임 UI 생성]
-    PM->>SB: POST /api/v1/pipelines/generate-wireframe?userFlowId={flowId}
+    PM->>SB: POST /pipelines/generate-wireframe?userFlowId={flowId}
     SB->>FA: POST /pipelines/generate-wireframe
     FA->>FA: 각 화면별 ASCII 레이아웃 그리기
     FA-->>SB: {flow_id, status: "wireframe_generated", nodes: [..., wireframe_ascii: "..."] }
     SB-->>PM: {flow_id, status: "wireframe_generated", nodes: [..., wireframe_ascii: "..."] }
 
     Note over PM, DB: [Stage 3: 피처 기반 개발 파이프라인/이슈 자동 도출]
-    PM->>SB: POST /api/v1/pipelines/generate-pipeline-from-flow?userFlowId={flowId}&projectId={projId}&category=BE
+    PM->>SB: POST /pipelines/generate-pipeline-from-flow?userFlowId={flowId}&projectId={projId}&category=BE
     SB->>FA: POST /pipelines/generate-pipeline-from-flow
     FA->>FA: 화면에 대응되는 DB 테이블 및 API 컨트롤러 세부 태스크(details) 설계
     FA-->>SB: {id: pipelineId, steps: [ {step_task_description: "...", step_details: [...]} ]}
@@ -60,7 +60,7 @@ sequenceDiagram
 * **목적**: 불명확한 서비스 기능 요구사항을 정제하고, 최종 합의된 화면 플로우 단위(`User Flow Nodes`)를 정의합니다.
 
 #### **Step A: 최초 분석 및 첫 질문 받기**
-* **URL**: `POST http://localhost:8080/api/v1/pipelines/generate-userflow`
+* **URL**: `POST http://localhost:8080/pipelines/generate-userflow`
 * **타입**: `multipart/form-data`
 * **요청 바디**:
   * `projectId`: `103` (스프링 프로젝트 ID)
@@ -72,7 +72,7 @@ sequenceDiagram
   * `question`: 기획 구체화를 위해 AI가 작성한 추가 질문.
 
 #### **Step B: 보완 답변 제출 및 최종 확정**
-* **URL**: `POST http://localhost:8080/api/v1/pipelines/userflow-session/{flowId}/answer`
+* **URL**: `POST http://localhost:8080/pipelines/userflow-session/{flowId}/answer`
 * **파라미터 (Query)**:
   * `answer`: `"루틴 커스텀 기능과 저녁 9시 리마인드 알림도 넣어주세요."`
   * `confirm`: `true` (기획 조율이 다 되었다면 `true`를 넣어 확정 프로세스를 실행합니다)
@@ -97,7 +97,7 @@ sequenceDiagram
 
 ### 2️⃣ Stage 2: 화면 단위 와이어프레임 자동 설계
 * **목적**: 확정된 유저 플로우 노드의 각 화면 설명(`description`)을 렌더링 가능한 ASCII 레이아웃 문자열로 구체화합니다.
-* **URL**: `POST http://localhost:8080/api/v1/pipelines/generate-wireframe`
+* **URL**: `POST http://localhost:8080/pipelines/generate-wireframe`
 * **파라미터 (Query)**:
   * `userFlowId`: `14` (Stage 1에서 도출된 `flow_id`)
 * **핵심 반환 데이터**:
@@ -107,7 +107,7 @@ sequenceDiagram
 
 ### 3️⃣ Stage 3: 버티컬 슬라이스(FE/BE) 개발 태스크 리스트 적재
 * **목적**: 화면 구조와 연계된 도메인 엔티티, API 엔드포인트 설계서 및 개발 이슈 카드를 자동으로 도출하고 영속 DB에 저장합니다.
-* **URL**: `POST http://localhost:8080/api/v1/pipelines/generate-pipeline-from-flow`
+* **URL**: `POST http://localhost:8080/pipelines/generate-pipeline-from-flow`
 * **파라미터 (Query)**:
   * `userFlowId`: `14` (인터뷰 세션 ID)
   * `projectId`: `103` (스프링 프로젝트 ID)

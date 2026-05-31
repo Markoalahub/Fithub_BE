@@ -1,12 +1,12 @@
 package markoala.fithub.demo.integration;
 
-import markoala.fithub.demo.auth.KakaoService;
-import markoala.fithub.demo.auth.dto.SignupRequest;
-import markoala.fithub.demo.github.service.GithubRepositoryService;
+import markoala.fithub.demo.domain.auth.KakaoService;
+import markoala.fithub.demo.domain.auth.dto.SignupRequest;
+import markoala.fithub.demo.domain.github.service.GithubRepositoryService;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
-import markoala.fithub.demo.user.JobRole;
-import markoala.fithub.demo.user.User;
-import markoala.fithub.demo.user.UserRepository;
+import markoala.fithub.demo.domain.user.JobRole;
+import markoala.fithub.demo.domain.user.User;
+import markoala.fithub.demo.domain.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,7 +69,7 @@ class AuthIntegrationTest {
                 "ghp_mock_token_123"
         );
 
-        mockMvc.perform(post("/api/v1/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andDo(print())
@@ -98,18 +98,9 @@ class AuthIntegrationTest {
     @DisplayName("회원가입 API: 이미 존재하는 이메일로 가입 시 409 Conflict 발생 확인")
     void testSignupDuplicateEmail() throws Exception {
         // 이미 가입된 회원 사전 저장
-        User existingUser = new User(
-                null,
-                "existing",
-                "existing@example.com",
-                "USER",
-                "github_999",
-                true,
-                "ghp_some",
-                null,
-                null,
-                null
-        );
+        User existingUser = User.createUser("existing", "existing@example.com", "github_999");
+        existingUser.updateGithubAccessToken("ghp_some");
+        existingUser.completeRegistration("existing@example.com", JobRole.BACKEND);
         userRepository.save(existingUser);
 
         SignupRequest request = new SignupRequest(
@@ -121,7 +112,7 @@ class AuthIntegrationTest {
                 "ghp_mock_token_123"
         );
 
-        mockMvc.perform(post("/api/v1/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andDo(print())
@@ -142,17 +133,12 @@ class AuthIntegrationTest {
         userInfo.put("email", "coder@github.com");
         when(githubRepositoryService.getUserInfoFromGithub("ghp_mock_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/github/callback")
+        mockMvc.perform(get("/auth/github/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.gitAccessToken").value("ghp_mock_token"))
+                .andExpect(jsonPath("$.isNew").value(true))
                 .andExpect(jsonPath("$.accessToken").exists())
-                .andExpect(jsonPath("$.refreshToken").exists())
-                .andExpect(jsonPath("$.user.id").exists())
-                .andExpect(jsonPath("$.oauthEmail").doesNotExist())
-                .andExpect(jsonPath("$.oauthUsername").doesNotExist())
-                .andExpect(jsonPath("$.socialLoginId").doesNotExist());
+                .andExpect(jsonPath("$.refreshToken").exists());
 
         // DB에 즉시 자동 가입(isRegistered=true) 상태로 영속화되었는지 검증
         userRepository.findAll(); // H2 EntityManager Flush 유도
@@ -161,8 +147,8 @@ class AuthIntegrationTest {
             throw new AssertionError("User not found by findBySocialLoginId in DB! SocialLoginId: 98765");
         }
         User savedUser = savedUserOpt.get();
-        if (!savedUser.isRegistered()) {
-            throw new AssertionError("User registration is incomplete (isRegistered = false)");
+        if (savedUser.isRegistered()) {
+            throw new AssertionError("User registration should be incomplete (isRegistered = false)");
         }
     }
 
@@ -170,18 +156,10 @@ class AuthIntegrationTest {
     @DisplayName("GitHub 콜백 API: 기존 소셜 유저 로그인 시, JWT 발급 및 로그인 처리가 완료되고 user.id가 반환되는지 확인")
     void testGithubCallbackExistingUser() throws Exception {
         // 기존 소셜 유저 DB 저장
-        User existingUser = new User(
-                null,
-                "github_coder",
-                "coder@github.com",
-                "USER",
-                "98765", // socialLoginId
-                true,
-                "old_token",
-                null,
-                null,
-                null
-        );
+        User existingUser = User.createUser("github_coder", "coder@github.com", "98765");
+        existingUser.updateNickname("github_coder");
+        existingUser.updateGithubAccessToken("old_token");
+        existingUser.completeRegistration("coder@github.com", JobRole.BACKEND);
         userRepository.save(existingUser);
 
         when(githubRepositoryService.exchangeCodeForToken("mock_code")).thenReturn("ghp_new_token");
@@ -192,20 +170,41 @@ class AuthIntegrationTest {
         userInfo.put("email", "coder@github.com");
         when(githubRepositoryService.getUserInfoFromGithub("ghp_new_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/github/callback")
+        mockMvc.perform(get("/auth/github/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.gitAccessToken").value("ghp_new_token"))
+                .andExpect(jsonPath("$.isNew").value(false))
                 .andExpect(jsonPath("$.accessToken").exists())
-                .andExpect(jsonPath("$.refreshToken").exists())
-                .andExpect(jsonPath("$.user.id").exists());
+                .andExpect(jsonPath("$.refreshToken").exists());
 
         // access token이 정상 갱신되었는지 확인
         userRepository.findAll(); // Flush 유도
         Optional<User> updatedUserOpt = userRepository.findBySocialLoginId("98765");
         assert updatedUserOpt.isPresent();
         assert updatedUserOpt.get().getGithubAccessToken().equals("ghp_new_token");
+    }
+
+    @Test
+    @DisplayName("GitHub 콜백 API: 기존 소셜 유저가 온보딩 미완료라면 isNew true 반환")
+    void testGithubCallbackExistingUserWithoutOnboarding() throws Exception {
+        User existingUser = User.createUser("github_coder", "coder@github.com", "98765");
+        existingUser.updateGithubAccessToken("old_token");
+        userRepository.save(existingUser);
+
+        when(githubRepositoryService.exchangeCodeForToken("mock_code")).thenReturn("ghp_new_token");
+
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("id", 98765L);
+        userInfo.put("login", "github_coder");
+        userInfo.put("email", "coder@github.com");
+        when(githubRepositoryService.getUserInfoFromGithub("ghp_new_token")).thenReturn(userInfo);
+
+        mockMvc.perform(get("/auth/github/callback")
+                .param("code", "mock_code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isNew").value(true))
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists());
     }
 
     @Test
@@ -226,17 +225,12 @@ class AuthIntegrationTest {
 
         when(kakaoService.getUserInfoFromKakao("kakao_mock_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/kakao/callback")
+        mockMvc.perform(get("/auth/kakao/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.kakaoAccessToken").value("kakao_mock_token"))
+                .andExpect(jsonPath("$.isNew").value(true))
                 .andExpect(jsonPath("$.accessToken").exists())
-                .andExpect(jsonPath("$.refreshToken").exists())
-                .andExpect(jsonPath("$.user.id").exists())
-                .andExpect(jsonPath("$.oauthEmail").doesNotExist())
-                .andExpect(jsonPath("$.oauthUsername").doesNotExist())
-                .andExpect(jsonPath("$.socialLoginId").doesNotExist());
+                .andExpect(jsonPath("$.refreshToken").exists());
 
         // DB에 즉시 자동 가입(isRegistered=true) 상태로 영속화되었는지 검증
         userRepository.findAll(); // H2 EntityManager Flush 유도
@@ -245,8 +239,8 @@ class AuthIntegrationTest {
             throw new AssertionError("User not found by findBySocialLoginId in DB! SocialLoginId: 123456");
         }
         User savedUser = savedUserOpt.get();
-        if (!savedUser.isRegistered()) {
-            throw new AssertionError("User registration is incomplete (isRegistered = false)");
+        if (savedUser.isRegistered()) {
+            throw new AssertionError("User registration should be incomplete (isRegistered = false)");
         }
     }
 
@@ -254,18 +248,10 @@ class AuthIntegrationTest {
     @DisplayName("Kakao 콜백 API: 기존 소셜 유저 로그인 시, JWT 발급 및 로그인 처리가 완료되고 user.id가 반환되는지 확인")
     void testKakaoCallbackExistingUser() throws Exception {
         // 기존 소셜 유저 DB 저장
-        User existingUser = new User(
-                null,
-                "kakaouser",
-                "kakaouser@kakao.com",
-                "USER",
-                "123456", // socialLoginId
-                true,
-                null,
-                "old_kakao_token",
-                null,
-                null
-        );
+        User existingUser = User.createUser("kakaouser", "kakaouser@kakao.com", "123456");
+        existingUser.updateNickname("kakaouser");
+        existingUser.updateKakaoAccessToken("old_kakao_token");
+        existingUser.completeRegistration("kakaouser@kakao.com", JobRole.PLANNER);
         userRepository.save(existingUser);
 
         when(kakaoService.exchangeCodeForToken("mock_code")).thenReturn("kakao_new_token");
@@ -283,14 +269,12 @@ class AuthIntegrationTest {
 
         when(kakaoService.getUserInfoFromKakao("kakao_new_token")).thenReturn(userInfo);
 
-        mockMvc.perform(get("/api/v1/auth/kakao/callback")
+        mockMvc.perform(get("/auth/kakao/callback")
                 .param("code", "mock_code"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.kakaoAccessToken").value("kakao_new_token"))
+                .andExpect(jsonPath("$.isNew").value(false))
                 .andExpect(jsonPath("$.accessToken").exists())
-                .andExpect(jsonPath("$.refreshToken").exists())
-                .andExpect(jsonPath("$.user.id").exists());
+                .andExpect(jsonPath("$.refreshToken").exists());
 
         // access token이 정상 갱신되었는지 확인
         userRepository.findAll(); // Flush 유도
