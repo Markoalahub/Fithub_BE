@@ -6,6 +6,11 @@ import markoala.fithub.demo.domain.meeting.dto.MeetingLogCreateRequest;
 import markoala.fithub.demo.domain.meeting.dto.MeetingLogResponse;
 import markoala.fithub.demo.domain.meeting.dto.MeetingStepRelationResponse;
 import markoala.fithub.demo.domain.meeting.dto.MeetingSummarizeResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningRequest;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalRequest;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslationSearchResponse;
 import markoala.fithub.demo.domain.pipeline.PipelineClient;
 import markoala.fithub.demo.domain.pipeline.dto.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.PipelineStepResponse;
@@ -128,17 +133,17 @@ public class MeetingService {
     // ─────────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public markoala.fithub.demo.domain.meeting.dto.TranslationSearchResponse searchMeetings(String query, int limit) {
+    public TranslationSearchResponse searchMeetings(String query, int limit) {
         log.info("[Meeting Service] Searching translation sessions for query: {}", query);
         return meetingClient.searchMeetings(query, limit);
     }
 
-    public markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalResponse translateToTechnical(Long meetingId, markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalRequest request) {
+    public TranslateToTechnicalResponse translateToTechnical(Long meetingId, TranslateToTechnicalRequest request) {
         log.info("[Meeting Service] Translating to technical for meeting {}", meetingId);
         return meetingClient.translateToTechnical(meetingId, request);
     }
 
-    public markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningResponse translateToPlanning(Long meetingId, markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningRequest request) {
+    public TranslateToPlanningResponse translateToPlanning(Long meetingId, TranslateToPlanningRequest request) {
         log.info("[Meeting Service] Translating to planning for meeting {}", meetingId);
         return meetingClient.translateToPlanning(meetingId, request);
     }

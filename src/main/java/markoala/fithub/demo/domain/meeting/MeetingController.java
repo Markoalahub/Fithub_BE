@@ -14,6 +14,11 @@ import markoala.fithub.demo.domain.meeting.dto.MeetingCreateRequest;
 import markoala.fithub.demo.domain.meeting.dto.MeetingLogResponse;
 import markoala.fithub.demo.domain.meeting.dto.MeetingStepRelationResponse;
 import markoala.fithub.demo.domain.meeting.dto.MeetingSummarizeResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningRequest;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalRequest;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslationSearchResponse;
 import markoala.fithub.demo.domain.pipeline.dto.PipelineStepResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -132,7 +137,7 @@ public class MeetingController {
 
     @GetMapping("/search")
     @Operation(summary = "번역 세션 임베딩 검색", description = "과거 회의 및 번역 세션 내용을 임베딩 기반으로 의미론적 검색을 수행합니다.")
-    public ResponseEntity<markoala.fithub.demo.domain.meeting.dto.TranslationSearchResponse> searchMeetings(
+    public ResponseEntity<TranslationSearchResponse> searchMeetings(
             @RequestParam String query,
             @RequestParam(defaultValue = "10") int limit
     ) {
@@ -141,18 +146,18 @@ public class MeetingController {
 
     @PostMapping("/{meetingId}/translate-to-technical")
     @Operation(summary = "기획자 -> 개발자 기술 번역", description = "기획자의 요구사항을 개발자가 이해할 수 있는 기술 용어와 구현 방식으로 번역합니다.")
-    public ResponseEntity<markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalResponse> translateToTechnical(
+    public ResponseEntity<TranslateToTechnicalResponse> translateToTechnical(
             @PathVariable Long meetingId,
-            @RequestBody markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalRequest request
+            @RequestBody TranslateToTechnicalRequest request
     ) {
         return ResponseEntity.ok(meetingService.translateToTechnical(meetingId, request));
     }
 
     @PostMapping("/{meetingId}/translate-to-planning")
     @Operation(summary = "개발자 -> 기획자 비즈니스 번역", description = "개발자의 기술적 설명을 기획자가 이해할 수 있는 비즈니스 가치와 비유로 번역합니다.")
-    public ResponseEntity<markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningResponse> translateToPlanning(
+    public ResponseEntity<TranslateToPlanningResponse> translateToPlanning(
             @PathVariable Long meetingId,
-            @RequestBody markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningRequest request
+            @RequestBody TranslateToPlanningRequest request
     ) {
         return ResponseEntity.ok(meetingService.translateToPlanning(meetingId, request));
     }

@@ -3,7 +3,9 @@ package markoala.fithub.demo.domain.project;
 import markoala.fithub.demo.domain.outbox.OutboxEvent;
 import markoala.fithub.demo.domain.outbox.OutboxEventRepository;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
+import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
+import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
 import markoala.fithub.demo.domain.user.JobRole;
 import markoala.fithub.demo.domain.user.User;
 import markoala.fithub.demo.domain.user.UserRepository;
@@ -38,7 +40,7 @@ public class ProjectService {
     }
 
     @Transactional
-    public markoala.fithub.demo.domain.project.dto.ProjectCreateResponse createProject(Long userId, ProjectCreateRequest request) {
+    public ProjectCreateResponse createProject(Long userId, ProjectCreateRequest request) {
         if (userId == null) {
             throw new IllegalStateException("인증된 사용자만 프로젝트를 생성할 수 있습니다.");
         }
@@ -56,7 +58,7 @@ public class ProjectService {
                 .anyMatch(p -> p.getName().equals(request.name()));
         
         if (isDuplicate) {
-            throw new markoala.fithub.demo.domain.project.exception.DuplicateProjectException("이미 동일한 이름의 프로젝트에 참여하고 있습니다.");
+            throw new DuplicateProjectException("이미 동일한 이름의 프로젝트에 참여하고 있습니다.");
         }
 
         String creatorNickname = user.getNickname() != null ? user.getNickname() : user.getUsername();
@@ -66,7 +68,7 @@ public class ProjectService {
         ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, user.getJobRole().name());
         projectMemberRepository.save(creator);
 
-        return new markoala.fithub.demo.domain.project.dto.ProjectCreateResponse(
+        return new ProjectCreateResponse(
                 savedProject.getId(),
                 savedProject.getName(),
                 savedProject.getCreatorId(),

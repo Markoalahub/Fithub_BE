@@ -5,9 +5,17 @@ import markoala.fithub.demo.domain.meeting.dto.MeetingLogCreateRequest;
 import markoala.fithub.demo.domain.meeting.dto.MeetingLogResponse;
 import markoala.fithub.demo.domain.meeting.dto.MeetingStepRelationResponse;
 import markoala.fithub.demo.domain.meeting.dto.MeetingSummarizeResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningRequest;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalRequest;
+import markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalResponse;
+import markoala.fithub.demo.domain.meeting.dto.TranslationSearchResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+
+import java.util.List;
 
 @Component
 public class MeetingClient {
@@ -33,11 +41,11 @@ public class MeetingClient {
                 .body(MeetingLogResponse.class);
     }
 
-    public java.util.List<MeetingLogResponse> getMeetingsByProject(Long projectId) {
+    public List<MeetingLogResponse> getMeetingsByProject(Long projectId) {
         return restClient.get()
                 .uri("/meetings/project/{projectId}", projectId)
                 .retrieve()
-                .body(new org.springframework.core.ParameterizedTypeReference<java.util.List<MeetingLogResponse>>() {});
+                .body(new ParameterizedTypeReference<List<MeetingLogResponse>>() {});
     }
 
     public MeetingSummarizeResponse summarizeMeeting(Long meetingId) {
@@ -66,7 +74,7 @@ public class MeetingClient {
     // 번역 및 인텔리전스 (Translation Router 연동)
     // ─────────────────────────────────────────────────────────────────
 
-    public markoala.fithub.demo.domain.meeting.dto.TranslationSearchResponse searchMeetings(String query, int limit) {
+    public TranslationSearchResponse searchMeetings(String query, int limit) {
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/meetings/search")
@@ -74,23 +82,23 @@ public class MeetingClient {
                         .queryParam("limit", limit)
                         .build())
                 .retrieve()
-                .body(markoala.fithub.demo.domain.meeting.dto.TranslationSearchResponse.class);
+                .body(TranslationSearchResponse.class);
     }
 
-    public markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalResponse translateToTechnical(Long meetingId, markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalRequest request) {
+    public TranslateToTechnicalResponse translateToTechnical(Long meetingId, TranslateToTechnicalRequest request) {
         return restClient.post()
                 .uri("/meetings/{meetingId}/translate-to-technical", meetingId)
                 .body(request)
                 .retrieve()
-                .body(markoala.fithub.demo.domain.meeting.dto.TranslateToTechnicalResponse.class);
+                .body(TranslateToTechnicalResponse.class);
     }
 
-    public markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningResponse translateToPlanning(Long meetingId, markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningRequest request) {
+    public TranslateToPlanningResponse translateToPlanning(Long meetingId, TranslateToPlanningRequest request) {
         return restClient.post()
                 .uri("/meetings/{meetingId}/translate-to-planning", meetingId)
                 .body(request)
                 .retrieve()
-                .body(markoala.fithub.demo.domain.meeting.dto.TranslateToPlanningResponse.class);
+                .body(TranslateToPlanningResponse.class);
     }
 
     public void finalizeTranslationSession(Long meetingId) {

@@ -1,5 +1,6 @@
 package markoala.fithub.demo.domain.pipeline.client;
 
+import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
@@ -104,7 +105,7 @@ public class PipelineV3Client {
     /**
      * 파이프라인 스텝 최종 승인 (회의 정보 기반)
      */
-    public PipelineStepV3Response confirmPipelineStep(Long stepId, markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest request) {
+    public PipelineStepV3Response confirmPipelineStep(Long stepId, MeetingStepConfirmationRequest request) {
         return restClient.patch()
                 .uri("/pipelines/steps/{stepId}/confirm", stepId)
                 .contentType(MediaType.APPLICATION_JSON)

@@ -1,7 +1,11 @@
 package markoala.fithub.demo.domain.pipeline.service;
 
+import markoala.fithub.demo.domain.issue.GitHubIssueService;
+import markoala.fithub.demo.domain.issue.Issue;
+import markoala.fithub.demo.domain.issue.IssueRepository;
 import markoala.fithub.demo.domain.pipeline.client.PipelineV3Client;
 
+import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
@@ -10,6 +14,11 @@ import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.domain.issue.RepositoryRepository;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
+import markoala.fithub.demo.domain.project.Project;
+import markoala.fithub.demo.domain.project.ProjectRepository;
+import markoala.fithub.demo.domain.user.User;
+import markoala.fithub.demo.domain.user.UserService;
+import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,11 +39,11 @@ public class PipelineV3Service {
 
     private final PipelineV3Client pipelineV3Client;
     private final RepositoryRepository repositoryRepository;
-    private final markoala.fithub.demo.domain.issue.IssueRepository issueRepository;
-    private final markoala.fithub.demo.domain.issue.GitHubIssueService gitHubIssueService;
-    private final markoala.fithub.demo.global.security.jwt.JwtProvider jwtProvider;
-    private final markoala.fithub.demo.domain.user.UserService userService;
-    private final markoala.fithub.demo.domain.project.ProjectRepository projectRepository;
+    private final IssueRepository issueRepository;
+    private final GitHubIssueService gitHubIssueService;
+    private final JwtProvider jwtProvider;
+    private final UserService userService;
+    private final ProjectRepository projectRepository;
 
     /**
      * 프로젝트 정보와 파이프라인 정보를 결합하여 반환 (API Composition)
@@ -43,7 +52,7 @@ public class PipelineV3Service {
         log.info("[PipelineV3Service] Composing project-pipeline overview for project {}", projectId);
         
         // 1. Spring DB에서 프로젝트 정보 조회
-        markoala.fithub.demo.domain.project.Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다: " + projectId));
 
         // 2. FastAPI에서 파이프라인 정보 조회
@@ -120,7 +129,7 @@ public class PipelineV3Service {
     /**
      * 회의 정보를 기반으로 파이프라인 스텝 최종 승인 처리.
      */
-    public PipelineStepV3Response confirmPipelineStep(Long stepId, markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest request) {
+    public PipelineStepV3Response confirmPipelineStep(Long stepId, MeetingStepConfirmationRequest request) {
         log.info("[PipelineV3Service] Confirming pipeline step {} via meeting {}", stepId, request.meetingId());
         return pipelineV3Client.confirmPipelineStep(stepId, request);
     }
@@ -148,19 +157,19 @@ public class PipelineV3Service {
     /**
      * v3 파이프라인 스텝을 Issue로 변환 + GitHub 동기화
      */
-    public markoala.fithub.demo.domain.issue.Issue createIssueFromPipelineStepAndSync(Long pipelineStepId, Long repositoryId, String title, String description, String repoUrl, String authHeader) {
+    public Issue createIssueFromPipelineStepAndSync(Long pipelineStepId, Long repositoryId, String title, String description, String repoUrl, String authHeader) {
         log.info("[PipelineV3Service] Creating issue and syncing to GitHub: {}", title);
 
         // 1. Issue 생성 (DB)
-        markoala.fithub.demo.domain.issue.Issue issue = markoala.fithub.demo.domain.issue.Issue.createIssue(repositoryId, null, title, description, "PENDING");
+        Issue issue = Issue.createIssue(repositoryId, null, title, description, "PENDING");
         issue.setPipelineStepId(pipelineStepId.intValue());
-        markoala.fithub.demo.domain.issue.Issue savedIssue = issueRepository.save(issue);
+        Issue savedIssue = issueRepository.save(issue);
 
         // 2. GitHub에 동기화
         try {
             String token = authHeader.substring(7); // "Bearer " 제거
             Long userId = jwtProvider.getUserIdFromToken(token);
-            markoala.fithub.demo.domain.user.User user = userService.findById(userId)
+            User user = userService.findById(userId)
                     .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
             String githubAccessToken = user.getGithubAccessToken();
 

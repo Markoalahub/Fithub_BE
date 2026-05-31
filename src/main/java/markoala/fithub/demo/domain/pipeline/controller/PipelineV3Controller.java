@@ -8,11 +8,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import markoala.fithub.demo.domain.issue.Issue;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
 import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest;
+import markoala.fithub.demo.domain.pipeline.dto.CreateIssueFromStepRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
@@ -156,12 +158,12 @@ public class PipelineV3Controller {
     @Hidden
     @PostMapping("/steps/{pipelineStepId}/create-issue")
     @Operation(summary = "파이프라인 스텝을 Issue로 변환", description = "사용자가 선택한 v3 파이프라인 스텝을 실제 작업 Issue로 생성하고 GitHub에 동기화합니다.")
-    public ResponseEntity<markoala.fithub.demo.domain.issue.Issue> createIssueFromStep(
+    public ResponseEntity<Issue> createIssueFromStep(
             @PathVariable Long pipelineStepId,
-            @RequestBody markoala.fithub.demo.domain.pipeline.dto.CreateIssueFromStepRequest request,
+            @RequestBody CreateIssueFromStepRequest request,
             @RequestHeader(name = "Authorization") String authHeader
     ) {
-        markoala.fithub.demo.domain.issue.Issue issue = pipelineV3Service.createIssueFromPipelineStepAndSync(
+        Issue issue = pipelineV3Service.createIssueFromPipelineStepAndSync(
                 pipelineStepId,
                 request.repositoryId(),
                 request.title(),

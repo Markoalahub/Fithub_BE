@@ -9,7 +9,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
+import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
+import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectInviteRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectInviteResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectMemberAddRequest;
@@ -31,13 +34,13 @@ public class ProjectController {
     private final ProjectService projectService;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
-    private final markoala.fithub.demo.domain.pipeline.service.PipelineV3Service pipelineV3Service;
+    private final PipelineV3Service pipelineV3Service;
 
     public ProjectController(
             ProjectService projectService,
             ProjectMemberRepository projectMemberRepository,
             UserRepository userRepository,
-            markoala.fithub.demo.domain.pipeline.service.PipelineV3Service pipelineV3Service
+            PipelineV3Service pipelineV3Service
     ) {
         this.projectService = projectService;
         this.projectMemberRepository = projectMemberRepository;
@@ -70,16 +73,16 @@ public class ProjectController {
     @Operation(summary = "프로젝트 생성", description = "새로운 프로젝트를 생성합니다")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "프로젝트 생성 성공",
-                    content = @Content(schema = @Schema(implementation = markoala.fithub.demo.domain.project.dto.ProjectCreateResponse.class))),
+                    content = @Content(schema = @Schema(implementation = ProjectCreateResponse.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
             @ApiResponse(responseCode = "403", description = "기획자가 아님"),
             @ApiResponse(responseCode = "409", description = "동일 이름 프로젝트 중복")
     })
-    public ResponseEntity<markoala.fithub.demo.domain.project.dto.ProjectCreateResponse> createProject(
+    public ResponseEntity<ProjectCreateResponse> createProject(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody ProjectCreateRequest request
     ) {
-        markoala.fithub.demo.domain.project.dto.ProjectCreateResponse response = projectService.createProject(userId, request);
+        ProjectCreateResponse response = projectService.createProject(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -222,7 +225,7 @@ public class ProjectController {
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
-    public ResponseEntity<markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse> getProjectPipelines(
+    public ResponseEntity<PipelineListResponse> getProjectPipelines(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long projectId
     ) {
@@ -236,7 +239,7 @@ public class ProjectController {
                 ));
 
         // 3. 파이프라인 조회 (AI 서버 호출)
-        markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse response = pipelineV3Service.getPipelinesByProject(projectId);
+        PipelineListResponse response = pipelineV3Service.getPipelinesByProject(projectId);
         return ResponseEntity.ok(response);
     }
 }

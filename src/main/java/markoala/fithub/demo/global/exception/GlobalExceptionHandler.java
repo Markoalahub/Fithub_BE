@@ -1,5 +1,6 @@
 package markoala.fithub.demo.global.exception;
 
+import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -53,8 +54,8 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(markoala.fithub.demo.domain.project.exception.DuplicateProjectException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateProjectException(markoala.fithub.demo.domain.project.exception.DuplicateProjectException ex) {
+    @ExceptionHandler(DuplicateProjectException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateProjectException(DuplicateProjectException ex) {
         log.error("[Duplicate Project Error] {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.domain.user.dto.OnboardingRequest;
+import markoala.fithub.demo.domain.user.dto.UserResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,7 @@ public class UserController {
         return ResponseEntity.ok(Map.of("success", true, "message", "온보딩이 완료되었습니다."));
     }
 
-    @GetMapping("/check-nickname")
+    @GetMapping({"/check", "/check-nickname"})
     @Operation(summary = "닉네임 중복 체크", description = "입력한 닉네임이 이미 사용 중인지 확인합니다.")
     @ApiResponse(responseCode = "200", description = "중복 여부 반환")
     public ResponseEntity<?> checkNicknameDuplicate(
@@ -67,13 +68,12 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "사용자 조회 성공"),
             @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
     })
-    public ResponseEntity<markoala.fithub.demo.domain.user.dto.UserResponse> getUserByNickname(
+    public ResponseEntity<UserResponse> getUserByNickname(
             @Parameter(description = "조회할 닉네임", required = true)
             @RequestParam String nickname
     ) {
         User user = userService.findByNickname(nickname)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + nickname));
-        return ResponseEntity.ok(markoala.fithub.demo.domain.user.dto.UserResponse.from(user));
+        return ResponseEntity.ok(UserResponse.from(user));
     }
 }
-

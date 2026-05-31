@@ -50,7 +50,7 @@ public class PipelineV3ControllerTest {
         );
 
         when(pipelineV3Service.generateV3Pipeline(any()))
-                .thenReturn(new markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response(1L, 1L, "category", 1, "status", java.util.Collections.emptyList()));
+                .thenReturn(new PipelineV3Response(1L, 1L, "category", 1, "status", Collections.emptyList()));
 
         mockMvc.perform(multipart("/pipelines/generate")
                         .file(file)
