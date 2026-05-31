@@ -259,6 +259,33 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("needsOnboarding - 온보딩 미완료 사용자는 true")
+    void needsOnboarding_IncompleteUser() {
+        User user = User.createUser("user1", "test@test.com", "s1");
+
+        assertThat(userService.needsOnboarding(user)).isTrue();
+    }
+
+    @Test
+    @DisplayName("needsOnboarding - 닉네임과 직군까지 등록된 사용자는 false")
+    void needsOnboarding_CompletedUser() {
+        User user = User.createUser("user1", "test@test.com", "s1");
+        user.updateNickname("nickname");
+        user.completeRegistration("test@test.com", JobRole.BACKEND);
+
+        assertThat(userService.needsOnboarding(user)).isFalse();
+    }
+
+    @Test
+    @DisplayName("needsOnboarding - 등록 상태여도 닉네임이 없으면 true")
+    void needsOnboarding_RegisteredWithoutNickname() {
+        User user = User.createUser("user1", "test@test.com", "s1");
+        user.completeRegistration("test@test.com", JobRole.BACKEND);
+
+        assertThat(userService.needsOnboarding(user)).isTrue();
+    }
+
+    @Test
     @DisplayName("completeOnboarding - 실패 (닉네임 중복)")
     void completeOnboarding_NicknameDuplicate() {
         User user = new User(1L, "user1", null, "test@test.com", "s1", false, "github_token", null, null, null);

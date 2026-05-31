@@ -77,9 +77,9 @@ public class AuthControllerTest {
         when(githubRepositoryService.exchangeCodeForToken("mock-code")).thenReturn("github-provider-token");
         when(githubRepositoryService.getUserInfoFromGithub("github-provider-token"))
                 .thenReturn(Map.of("id", 12345L, "login", "github-user", "email", "github@test.com"));
-        when(userService.hasGithubAccessToken(12345L)).thenReturn(false);
         when(userService.findOrCreateGithubUser("github-user", "github@test.com", 12345L, "github-provider-token"))
                 .thenReturn(user);
+        when(userService.needsOnboarding(user)).thenReturn(true);
         when(jwtProvider.generateAccessToken(user)).thenReturn("access-token");
         when(jwtProvider.generateRefreshToken(user)).thenReturn("refresh-token");
 
@@ -105,9 +105,9 @@ public class AuthControllerTest {
                         "properties", Map.of("nickname", "kakao-user"),
                         "kakao_account", Map.of("email", "kakao@test.com")
                 ));
-        when(userService.hasKakaoAccessToken(67890L)).thenReturn(false);
         when(userService.findOrCreateKakaoUser("kakao-user", "kakao@test.com", 67890L, "kakao-provider-token"))
                 .thenReturn(user);
+        when(userService.needsOnboarding(user)).thenReturn(true);
         when(jwtProvider.generateAccessToken(user)).thenReturn("access-token");
         when(jwtProvider.generateRefreshToken(user)).thenReturn("refresh-token");
 

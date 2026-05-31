@@ -157,6 +157,7 @@ class AuthIntegrationTest {
     void testGithubCallbackExistingUser() throws Exception {
         // 기존 소셜 유저 DB 저장
         User existingUser = User.createUser("github_coder", "coder@github.com", "98765");
+        existingUser.updateNickname("github_coder");
         existingUser.updateGithubAccessToken("old_token");
         existingUser.completeRegistration("coder@github.com", JobRole.BACKEND);
         userRepository.save(existingUser);
@@ -181,6 +182,29 @@ class AuthIntegrationTest {
         Optional<User> updatedUserOpt = userRepository.findBySocialLoginId("98765");
         assert updatedUserOpt.isPresent();
         assert updatedUserOpt.get().getGithubAccessToken().equals("ghp_new_token");
+    }
+
+    @Test
+    @DisplayName("GitHub 콜백 API: 기존 소셜 유저가 온보딩 미완료라면 isNew true 반환")
+    void testGithubCallbackExistingUserWithoutOnboarding() throws Exception {
+        User existingUser = User.createUser("github_coder", "coder@github.com", "98765");
+        existingUser.updateGithubAccessToken("old_token");
+        userRepository.save(existingUser);
+
+        when(githubRepositoryService.exchangeCodeForToken("mock_code")).thenReturn("ghp_new_token");
+
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("id", 98765L);
+        userInfo.put("login", "github_coder");
+        userInfo.put("email", "coder@github.com");
+        when(githubRepositoryService.getUserInfoFromGithub("ghp_new_token")).thenReturn(userInfo);
+
+        mockMvc.perform(get("/auth/github/callback")
+                .param("code", "mock_code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isNew").value(true))
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists());
     }
 
     @Test
@@ -225,8 +249,9 @@ class AuthIntegrationTest {
     void testKakaoCallbackExistingUser() throws Exception {
         // 기존 소셜 유저 DB 저장
         User existingUser = User.createUser("kakaouser", "kakaouser@kakao.com", "123456");
+        existingUser.updateNickname("kakaouser");
         existingUser.updateKakaoAccessToken("old_kakao_token");
-        existingUser.completeRegistration("kakaouser@kakao.com", JobRole.BACKEND);
+        existingUser.completeRegistration("kakaouser@kakao.com", JobRole.PLANNER);
         userRepository.save(existingUser);
 
         when(kakaoService.exchangeCodeForToken("mock_code")).thenReturn("kakao_new_token");

@@ -86,23 +86,17 @@ public class AuthController {
     @Operation(
             summary = "GitHub OAuth 로그인 시작",
             description = """
-                    **GitHub 소셜 로그인의 시작점입니다.**
+                    **GitHub OAuth 인증 URL을 생성하고 GitHub 인증 페이지로 302 리다이렉트합니다.**
                     
-                    이 엔드포인트를 호출하면 GitHub OAuth 인증 페이지로 자동 리다이렉트됩니다.
-                    사용자가 GitHub에서 인증을 완료하면 숨김 처리된 `/auth/github/callback`으로 콜백됩니다.
-                    현재 콜백은 `isNew`, `accessToken`, `refreshToken` JSON 응답을 발급합니다.
-                    
-                    ### 사용 방법
-                    1. **브라우저에서** 이 URL을 직접 열거나 `<a>` 태그로 연결합니다
-                    2. `frontendRedirect`, `role` 파라미터는 OAuth `state`에 보존됩니다
-                    3. GitHub 인증 완료 → 콜백 → JWT 발급
+                    `frontendRedirect`와 `role` 파라미터가 전달되면 OAuth `state`에 URL 인코딩되어 보존됩니다.
+                    GitHub 인증 완료 후 `/auth/github/callback`에서 `state`를 복원하여 응답 방식을 결정합니다.
                     
                     ### 호출 예시
                     ```
                     GET /auth/login?frontendRedirect=http://localhost:3000/auth/callback&role=dev-fe
                     ```
                     
-                    ### 콜백 JSON 응답 예시
+                    ### 콜백 JSON 응답 예시 (`frontendRedirect` 미사용 시)
                     ```json
                     {
                       "isNew": true,
@@ -116,13 +110,12 @@ public class AuthController {
             @ApiResponse(responseCode = "302", description = "GitHub OAuth 인증 페이지로 리다이렉트")
     })
     public String login(
-            @Parameter(description = "로그인 성공 후 프론트엔드 리다이렉트 URL (예: http://localhost:3000/auth/callback). "
-                    + "지정하면 콜백 완료 후 이 URL로 JWT 토큰과 함께 리다이렉트됩니다. "
-                    + "미지정 시 콜백에서 JSON 응답을 반환합니다.",
+            @Parameter(description = "OAuth 콜백 완료 후 302 응답의 Location 대상으로 사용할 URL입니다. "
+                    + "지정하면 accessToken, refreshToken, isNew가 URL fragment에 포함되고, "
+                    + "미지정 시 콜백 엔드포인트가 JSON 응답을 반환합니다.",
                     example = "http://localhost:3000/auth/callback")
             @RequestParam(required = false) String frontendRedirect,
-            @Parameter(description = "사용자 역할 (pm, dev-fe, dev-be). "
-                    + "프론트엔드 리다이렉트 시 role 파라미터로 전달됩니다. 기본값: dev-fe",
+            @Parameter(description = "OAuth state에 보존되는 역할 힌트입니다. 허용 값: pm, dev-fe, dev-be. 기본값: dev-fe",
                     example = "dev-fe")
             @RequestParam(required = false) String role
     ) {
@@ -148,17 +141,18 @@ public class AuthController {
     @Operation(
             summary = "GitHub OAuth 콜백 (자동 호출)",
             description = """
-                    **GitHub OAuth 인증 완료 후 자동으로 호출되는 콜백 엔드포인트입니다. 직접 호출하지 마세요.**
+                    **GitHub OAuth 인증 완료 후 GitHub가 호출하는 콜백 엔드포인트입니다.**
                     
                     ### 내부 처리 로직
                     1. GitHub에서 전달받은 `code`로 GitHub Access Token을 교환합니다
                     2. GitHub Access Token으로 사용자 정보(login, email, id)를 조회합니다
                     3. DB에서 기존 사용자를 찾거나 신규 생성합니다 (`findOrCreateGithubUser`)
-                    4. 서비스 전용 JWT `accessToken`과 `refreshToken`을 발급합니다
+                    4. 온보딩 필요 여부를 `isNew`로 계산합니다
+                    5. 서비스 전용 JWT `accessToken`과 `refreshToken`을 발급합니다
                     
                     ### 응답 방식
-                    - **`frontendRedirect`가 state에 포함된 경우**: 302 리다이렉트로 프론트엔드에 JWT 전달
-                    - **`frontendRedirect`가 없는 경우**: 200 OK + JSON 응답
+                    - **`frontendRedirect`가 state에 포함된 경우**: 302 Found, `Location` URL fragment에 `isNew`, `accessToken`, `refreshToken` 포함
+                    - **`frontendRedirect`가 없는 경우**: 200 OK, JSON body에 `isNew`, `accessToken`, `refreshToken` 포함
                     
                     ### JSON 응답 예시 (frontendRedirect 미사용 시)
                     ```json
@@ -173,7 +167,7 @@ public class AuthController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "JSON 응답 (frontendRedirect 미사용 시)",
                     content = @Content(schema = @Schema(implementation = GithubCallbackResponse.class))),
-            @ApiResponse(responseCode = "302", description = "프론트엔드 URL로 리다이렉트 (frontendRedirect 사용 시)"),
+            @ApiResponse(responseCode = "302", description = "frontendRedirect URL로 리다이렉트 (fragment에 토큰 포함)"),
             @ApiResponse(responseCode = "500", description = "GitHub API 호출 실패 또는 토큰 교환 실패")
     })
     public ResponseEntity<?> githubCallback(
@@ -196,11 +190,11 @@ public class AuthController {
 
         log.info("[Auth] GitHub user info: login={}, email={}", githubLogin, githubEmail);
 
-        // 3. 가입 완료 여부(isNew)를 토큰 존재 여부로 판단
-        boolean isNew = !userService.hasGithubAccessToken(githubId);
-
-        // 4. GitHub 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
+        // 3. GitHub 사용자 정보 기반 조회 또는 생성
         User user = userService.findOrCreateGithubUser(githubLogin, githubEmail, githubId, githubAccessToken);
+
+        // 4. 온보딩 필요 여부(isNew)를 사용자 프로필 완성 상태로 판단
+        boolean isNew = userService.needsOnboarding(user);
 
         // 5. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
         String accessToken = jwtProvider.generateAccessToken(user);
@@ -226,23 +220,17 @@ public class AuthController {
     @Operation(
             summary = "Kakao OAuth 로그인 시작",
             description = """
-                    **Kakao 소셜 로그인의 시작점입니다.**
+                    **Kakao OAuth 인증 URL을 생성하고 Kakao 인증 페이지로 302 리다이렉트합니다.**
                     
-                    이 엔드포인트를 호출하면 Kakao OAuth 인증 페이지로 자동 리다이렉트됩니다.
-                    사용자가 Kakao에서 인증을 완료하면 숨김 처리된 `/auth/kakao/callback`으로 콜백됩니다.
-                    현재 콜백은 `isNew`, `accessToken`, `refreshToken` JSON 응답을 발급합니다.
-                    
-                    ### 사용 방법
-                    1. **브라우저에서** 이 URL을 직접 열거나 `<a>` 태그로 연결합니다
-                    2. `frontendRedirect`, `role` 파라미터는 OAuth `state`에 보존됩니다
-                    3. Kakao 인증 완료 → 콜백 → JWT 발급
+                    `frontendRedirect`와 `role` 파라미터가 전달되면 OAuth `state`에 URL 인코딩되어 보존됩니다.
+                    Kakao 인증 완료 후 `/auth/kakao/callback`에서 `state`를 복원하여 응답 방식을 결정합니다.
                     
                     ### 호출 예시
                     ```
                     GET /auth/kakao/login?frontendRedirect=http://localhost:3000/auth/callback&role=pm
                     ```
                     
-                    ### 콜백 JSON 응답 예시
+                    ### 콜백 JSON 응답 예시 (`frontendRedirect` 미사용 시)
                     ```json
                     {
                       "isNew": true,
@@ -256,13 +244,12 @@ public class AuthController {
             @ApiResponse(responseCode = "302", description = "Kakao OAuth 인증 페이지로 리다이렉트")
     })
     public String kakaoLogin(
-            @Parameter(description = "로그인 성공 후 프론트엔드 리다이렉트 URL (예: http://localhost:3000/auth/callback). "
-                    + "지정하면 콜백 완료 후 이 URL로 JWT 토큰과 함께 리다이렉트됩니다. "
-                    + "미지정 시 콜백에서 JSON 응답을 반환합니다.",
+            @Parameter(description = "OAuth 콜백 완료 후 302 응답의 Location 대상으로 사용할 URL입니다. "
+                    + "지정하면 accessToken, refreshToken, isNew가 URL fragment에 포함되고, "
+                    + "미지정 시 콜백 엔드포인트가 JSON 응답을 반환합니다.",
                     example = "http://localhost:3000/auth/callback")
             @RequestParam(required = false) String frontendRedirect,
-            @Parameter(description = "사용자 역할 (pm, dev-fe, dev-be). "
-                    + "프론트엔드 리다이렉트 시 role 파라미터로 전달됩니다. 기본값: pm",
+            @Parameter(description = "OAuth state에 보존되는 역할 힌트입니다. 허용 값: pm, dev-fe, dev-be. 기본값: pm",
                     example = "pm")
             @RequestParam(required = false) String role
     ) {
@@ -288,17 +275,18 @@ public class AuthController {
     @Operation(
             summary = "Kakao OAuth 콜백 (자동 호출)",
             description = """
-                    **Kakao OAuth 인증 완료 후 자동으로 호출되는 콜백 엔드포인트입니다. 직접 호출하지 마세요.**
+                    **Kakao OAuth 인증 완료 후 Kakao가 호출하는 콜백 엔드포인트입니다.**
                     
                     ### 내부 처리 로직
                     1. Kakao에서 전달받은 `code`로 Kakao Access Token을 교환합니다
                     2. Kakao Access Token으로 사용자 정보(id, nickname, email)를 조회합니다
                     3. DB에서 기존 사용자를 찾거나 신규 생성합니다 (`findOrCreateKakaoUser`)
-                    4. 서비스 전용 JWT `accessToken`과 `refreshToken`을 발급합니다
+                    4. 온보딩 필요 여부를 `isNew`로 계산합니다
+                    5. 서비스 전용 JWT `accessToken`과 `refreshToken`을 발급합니다
                     
                     ### 응답 방식
-                    - **`frontendRedirect`가 state에 포함된 경우**: 302 리다이렉트로 프론트엔드에 JWT 전달
-                    - **`frontendRedirect`가 없는 경우**: 200 OK + JSON 응답
+                    - **`frontendRedirect`가 state에 포함된 경우**: 302 Found, `Location` URL fragment에 `isNew`, `accessToken`, `refreshToken` 포함
+                    - **`frontendRedirect`가 없는 경우**: 200 OK, JSON body에 `isNew`, `accessToken`, `refreshToken` 포함
                     
                     ### JSON 응답 예시 (frontendRedirect 미사용 시)
                     ```json
@@ -313,7 +301,7 @@ public class AuthController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "JSON 응답 (frontendRedirect 미사용 시)",
                     content = @Content(schema = @Schema(implementation = KakaoCallbackResponse.class))),
-            @ApiResponse(responseCode = "302", description = "프론트엔드 URL로 리다이렉트 (frontendRedirect 사용 시)"),
+            @ApiResponse(responseCode = "302", description = "frontendRedirect URL로 리다이렉트 (fragment에 토큰 포함)"),
             @ApiResponse(responseCode = "500", description = "Kakao API 호출 실패 또는 토큰 교환 실패")
     })
     @SuppressWarnings("unchecked")
@@ -341,11 +329,11 @@ public class AuthController {
 
         log.info("[Auth] Kakao user info: nickname={}, email={}", nickname, email);
 
-        // 3. 가입 완료 여부(isNew)를 토큰 존재 여부로 판단
-        boolean isNew = !userService.hasKakaoAccessToken(kakaoId);
-
-        // 4. Kakao 사용자 정보 기반 조회 또는 생성 완결 (즉시 가입 처리)
+        // 3. Kakao 사용자 정보 기반 조회 또는 생성
         User user = userService.findOrCreateKakaoUser(nickname, email, kakaoId, kakaoAccessToken);
+
+        // 4. 온보딩 필요 여부(isNew)를 사용자 프로필 완성 상태로 판단
+        boolean isNew = userService.needsOnboarding(user);
 
         // 5. 우리 서비스 전용 JWT 즉시 발급 및 응답 구성
         String accessToken = jwtProvider.generateAccessToken(user);
@@ -498,7 +486,7 @@ public class AuthController {
                     **[레거시] 세션에 저장된 JWT 토큰을 조회합니다.**
                     
                     현재는 OAuth 콜백에서 직접 JWT를 반환하므로, 이 엔드포인트는 레거시 호환용입니다.
-                    일반적으로는 콜백의 JSON 응답 또는 리다이렉트 쿼리 파라미터에서 토큰을 수신합니다.
+                    콜백의 JSON 응답 또는 `frontendRedirect` 리다이렉트 URL fragment에서 동일한 토큰 정보가 반환됩니다.
                     """
     )
     public SessionTokenResponse getSessionToken(jakarta.servlet.http.HttpSession session) {

@@ -274,6 +274,14 @@ public class UserService implements UserDetailsService {
         return userRepository.findByNickname(nickname);
     }
 
+    public boolean needsOnboarding(User user) {
+        return user == null
+                || !user.isRegistered()
+                || user.getNickname() == null
+                || user.getNickname().isBlank()
+                || user.getJobRole() == null;
+    }
+
     @Transactional(readOnly = true)
     public boolean hasGithubAccessToken(Long githubId) {
         return userRepository.findBySocialLoginId(String.valueOf(githubId))
