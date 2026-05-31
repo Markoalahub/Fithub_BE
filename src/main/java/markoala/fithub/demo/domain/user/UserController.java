@@ -26,7 +26,8 @@ public class UserController {
     @Operation(summary = "기획자/개발자 온보딩", description = "로그인 후 닉네임과 직군(jobRole)을 설정하여 온보딩을 완료합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "온보딩 완료"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 또는 직군 값 오류"),
+            @ApiResponse(responseCode = "409", description = "이미 사용 중인 닉네임")
     })
     public ResponseEntity<?> onboardUser(
             @AuthenticationPrincipal Long userId,

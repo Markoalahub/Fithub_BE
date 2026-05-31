@@ -80,6 +80,11 @@ public class PipelineV3Service {
         log.info("[PipelineV3Service] Generating v3 pipeline — projectId={}, category={}", 
                 request.projectId(), request.category());
 
+        projectRepository.findById(request.projectId())
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."
+                ));
+
         PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
 
         log.info("[PipelineV3Service] v3 pipeline generated — id={}, version={}, feats={}",

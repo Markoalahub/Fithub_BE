@@ -30,6 +30,18 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+
+    @ExceptionHandler(org.springframework.web.client.RestClientException.class)
+    public ResponseEntity<ErrorResponse> handleRestClientException(org.springframework.web.client.RestClientException ex) {
+        log.error("[External API Error] {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErrorResponse.of(
+                        HttpStatus.SERVICE_UNAVAILABLE.value(),
+                        HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+                        "외부 API 서버 연결에 실패했습니다."
+                ));
+    }
+
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex) {
         log.warn("[Custom Error] {}", ex.getMessage());

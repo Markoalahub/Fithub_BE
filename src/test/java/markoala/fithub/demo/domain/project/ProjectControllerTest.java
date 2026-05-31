@@ -66,7 +66,7 @@ public class ProjectControllerTest {
     @DisplayName("프로젝트 생성 성공")
     void createProject_Success() throws Exception {
         ProjectCreateRequest request = new ProjectCreateRequest("Fithub", "Project description");
-        ProjectCreateResponse response = new ProjectCreateResponse(1L, "Fithub");
+        ProjectCreateResponse response = new ProjectCreateResponse(1L, "Fithub", 1L, "planner");
 
         when(projectService.createProject(eq(1L), any(ProjectCreateRequest.class))).thenReturn(response);
 
@@ -76,7 +76,9 @@ public class ProjectControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.project_id").value(1L))
-                .andExpect(jsonPath("$.project_name").value("Fithub"));
+                .andExpect(jsonPath("$.project_name").value("Fithub"))
+                .andExpect(jsonPath("$.creator_id").value(1L))
+                .andExpect(jsonPath("$.creator_nickname").value("planner"));
     }
 
     @Test
@@ -135,18 +137,18 @@ public class ProjectControllerTest {
     }
 
     @Test
-    @DisplayName("프로젝트 초대 실패 - 권한 없음 (409 Conflict mapped from IllegalState)")
+    @DisplayName("프로젝트 초대 실패 - 권한 없음 (403)")
     void inviteUserToProject_Forbidden() throws Exception {
         ProjectInviteRequest request = new ProjectInviteRequest("newMember");
 
-        doThrow(new IllegalStateException("프로젝트 초대 권한이 없습니다."))
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "프로젝트를 생성한 기획자만 멤버를 초대할 수 있습니다."))
                 .when(projectService).inviteUserToProject(1L, 1L, "newMember");
 
         mockMvc.perform(post("/projects/1/invite")
                         .header("Authorization", "Bearer token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isConflict()); 
+                .andExpect(status().isForbidden());
     }
 
     @Test

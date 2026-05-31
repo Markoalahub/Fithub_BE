@@ -87,13 +87,15 @@ class ProjectServiceTest {
         when(projectMemberRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
         when(projectRepository.findAllById(Collections.emptyList())).thenReturn(Collections.emptyList());
         
-        Project savedProject = new Project(10L, "New Project", "Desc", 1L, null, null);
+        Project savedProject = new Project(10L, "New Project", "Desc", 1L, "nick1", null, null);
         when(projectRepository.save(any(Project.class))).thenReturn(savedProject);
 
         ProjectCreateResponse response = projectService.createProject(1L, request);
 
         assertThat(response.projectId()).isEqualTo(10L);
         assertThat(response.projectName()).isEqualTo("New Project");
+        assertThat(response.creatorId()).isEqualTo(1L);
+        assertThat(response.creatorNickname()).isEqualTo("nick1");
         verify(projectMemberRepository).save(any(ProjectMember.class));
     }
 
@@ -210,14 +212,10 @@ class ProjectServiceTest {
     @Test
     @DisplayName("inviteUserToProject - 성공")
     void inviteUserToProject_Success() {
-        User inviter = new User(1L, "user1", "nick1", "email1", "s1", true, null, null, null, null);
-        inviter.updateJobRole(JobRole.PLANNER);
-        
         Project project = new Project(100L, "Proj", "Desc", 1L, null, null);
         User invitee = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
         invitee.updateJobRole(JobRole.BACKEND);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(userRepository.findByNickname("nick2")).thenReturn(Optional.of(invitee));
         lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
@@ -228,49 +226,37 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("inviteUserToProject - 성공 (멤버가 초대)")
-    void inviteUserToProject_MemberInvites() {
-        User inviter = new User(1L, "user1", "nick1", "email1", "s1", true, null, null, null, null);
-        inviter.updateJobRole(JobRole.BACKEND);
-        
-        Project project = new Project(100L, "Proj", "Desc", 1L, null, null);
-        User invitee = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
+    @DisplayName("inviteUserToProject - 실패 (생성자가 아닌 멤버가 초대)")
+    void inviteUserToProject_MemberCannotInvite() {
+        Project project = new Project(100L, "Proj", "Desc", 2L, null, null);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
-        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.of(ProjectMember.createMember(100L, 1L, "MEMBER")));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
-        when(userRepository.findByNickname("nick2")).thenReturn(Optional.of(invitee));
-        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.empty());
 
-        projectService.inviteUserToProject(1L, 100L, "nick2");
+        assertThatThrownBy(() -> projectService.inviteUserToProject(1L, 100L, "nick2"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("프로젝트를 생성한 기획자만 멤버를 초대할 수 있습니다");
 
-        verify(projectMemberRepository).save(any(ProjectMember.class));
+        verify(projectMemberRepository, never()).save(any(ProjectMember.class));
     }
 
     @Test
     @DisplayName("inviteUserToProject - 실패 (권한 없음)")
     void inviteUserToProject_NoPermission() {
-        User inviter = new User(1L, "user1", "nick1", "email1", "s1", true, null, null, null, null);
-        inviter.updateJobRole(JobRole.BACKEND);
+        Project project = new Project(100L, "Proj", "Desc", 2L, null, null);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
-        lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 1L)).thenReturn(Optional.empty());
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
 
         assertThatThrownBy(() -> projectService.inviteUserToProject(1L, 100L, "nick2"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("프로젝트 초대 권한이 없습니다.");
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("프로젝트를 생성한 기획자만 멤버를 초대할 수 있습니다");
     }
 
     @Test
     @DisplayName("inviteUserToProject - 실패 (이미 멤버)")
     void inviteUserToProject_AlreadyMember() {
-        User inviter = new User(1L, "user1", "nick1", "email1", "s1", true, null, null, null, null);
-        inviter.updateJobRole(JobRole.PLANNER);
-        
         Project project = new Project(100L, "Proj", "Desc", 1L, null, null);
         User invitee = new User(2L, "user2", "nick2", "email2", "s2", true, null, null, null, null);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(inviter));
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
         when(userRepository.findByNickname("nick2")).thenReturn(Optional.of(invitee));
         lenient().when(projectMemberRepository.findByProjectIdAndUserId(100L, 2L)).thenReturn(Optional.of(ProjectMember.createMember(100L, 1L, "MEMBER")));

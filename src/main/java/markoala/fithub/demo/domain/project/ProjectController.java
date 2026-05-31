@@ -71,7 +71,9 @@ public class ProjectController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "프로젝트 생성 성공",
                     content = @Content(schema = @Schema(implementation = markoala.fithub.demo.domain.project.dto.ProjectCreateResponse.class))),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 또는 이름 중복")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+            @ApiResponse(responseCode = "403", description = "기획자가 아님"),
+            @ApiResponse(responseCode = "409", description = "동일 이름 프로젝트 중복")
     })
     public ResponseEntity<markoala.fithub.demo.domain.project.dto.ProjectCreateResponse> createProject(
             @AuthenticationPrincipal Long userId,
@@ -96,8 +98,12 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}")
-    @Operation(summary = "프로젝트 삭제", description = "기획자가 특정 프로젝트를 삭제합니다")
-    @ApiResponse(responseCode = "204", description = "프로젝트 삭제 성공")
+    @Operation(summary = "프로젝트 삭제", description = "프로젝트를 생성한 사용자만 특정 프로젝트를 삭제합니다")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "프로젝트 삭제 성공"),
+            @ApiResponse(responseCode = "403", description = "프로젝트 생성자가 아님"),
+            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
+    })
     public ResponseEntity<Void> deleteProject(
             @AuthenticationPrincipal Long userId,
             @PathVariable Long projectId
@@ -134,13 +140,14 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/invite")
-    @Operation(summary = "프로젝트 멤버 이메일 초대", description = "기획자가 이메일로 프로젝트에 멤버를 초대합니다.")
+    @Operation(summary = "프로젝트 멤버 닉네임 초대", description = "프로젝트를 생성한 기획자가 닉네임으로 사용자를 프로젝트에 초대합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "초대 성공",
                     content = @Content(schema = @Schema(implementation = ProjectInviteResponse.class))),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 이미 존재하는 멤버"),
-            @ApiResponse(responseCode = "403", description = "초대 권한 없음 (기획자 아님)"),
-            @ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자를 찾을 수 없음")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "403", description = "초대 권한 없음 (프로젝트 생성자 아님)"),
+            @ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자를 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "이미 존재하는 멤버")
     })
     public ResponseEntity<ProjectInviteResponse> inviteUser(
             @AuthenticationPrincipal Long inviterId,
@@ -212,7 +219,8 @@ public class ProjectController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "파이프라인 조회 성공"),
             @ApiResponse(responseCode = "403", description = "해당 프로젝트의 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
+            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
+            @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse> getProjectPipelines(
             @AuthenticationPrincipal Long userId,

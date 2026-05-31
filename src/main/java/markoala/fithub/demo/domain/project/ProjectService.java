@@ -56,13 +56,19 @@ public class ProjectService {
             throw new markoala.fithub.demo.domain.project.exception.DuplicateProjectException("이미 동일한 이름의 프로젝트에 참여하고 있습니다.");
         }
 
-        Project project = Project.createProject(request.name(), request.description(), userId);
+        String creatorNickname = user.getNickname() != null ? user.getNickname() : user.getUsername();
+        Project project = Project.createProject(request.name(), request.description(), userId, creatorNickname);
         Project savedProject = projectRepository.save(project);
 
         ProjectMember creator = ProjectMember.createMember(savedProject.getId(), userId, user.getJobRole().name());
         projectMemberRepository.save(creator);
 
-        return new markoala.fithub.demo.domain.project.dto.ProjectCreateResponse(savedProject.getId(), savedProject.getName());
+        return new markoala.fithub.demo.domain.project.dto.ProjectCreateResponse(
+                savedProject.getId(),
+                savedProject.getName(),
+                savedProject.getCreatorId(),
+                savedProject.getCreatorNickname()
+        );
     }
 
     @Transactional
@@ -99,17 +105,13 @@ public class ProjectService {
 
     @Transactional
     public void inviteUserToProject(Long inviterId, Long projectId, String nickname) {
-        User inviter = userRepository.findById(inviterId)
-                .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다: " + inviterId));
-
-        boolean isPlanner = inviter.getJobRole() == JobRole.PLANNER;
-        boolean isProjectMember = projectMemberRepository.findByProjectIdAndUserId(projectId, inviterId).isPresent();
-
-        if (!isPlanner && !isProjectMember) {
-            throw new IllegalStateException("프로젝트 초대 권한이 없습니다.");
-        }
-
         Project project = getProject(projectId);
+
+        if (!project.getCreatorId().equals(inviterId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "프로젝트를 생성한 기획자만 멤버를 초대할 수 있습니다."
+            );
+        }
 
         User user = userRepository.findByNickname(nickname)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."));

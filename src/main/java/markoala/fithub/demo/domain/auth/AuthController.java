@@ -89,22 +89,26 @@ public class AuthController {
                     **GitHub 소셜 로그인의 시작점입니다.**
                     
                     이 엔드포인트를 호출하면 GitHub OAuth 인증 페이지로 자동 리다이렉트됩니다.
-                    사용자가 GitHub에서 인증을 완료하면 `/auth/github/callback`으로 콜백됩니다.
+                    사용자가 GitHub에서 인증을 완료하면 숨김 처리된 `/auth/github/callback`으로 콜백됩니다.
+                    현재 콜백은 `isNew`, `accessToken`, `refreshToken` JSON 응답을 발급합니다.
                     
                     ### 사용 방법
                     1. **브라우저에서** 이 URL을 직접 열거나 `<a>` 태그로 연결합니다
-                    2. `frontendRedirect` 파라미터에 로그인 성공 후 돌아갈 프론트엔드 URL을 지정합니다
-                    3. GitHub 인증 완료 → 콜백 → JWT 발급 → `frontendRedirect` URL로 리다이렉트
+                    2. `frontendRedirect`, `role` 파라미터는 OAuth `state`에 보존됩니다
+                    3. GitHub 인증 완료 → 콜백 → JWT 발급
                     
                     ### 호출 예시
                     ```
                     GET /auth/login?frontendRedirect=http://localhost:3000/auth/callback&role=dev-fe
                     ```
                     
-                    ### 리다이렉트 결과 (frontendRedirect로 전달되는 쿼리 파라미터)
-                    ```
-                    {frontendRedirect}?success=true&provider=github&accessToken=xxx&refreshToken=xxx
-                    &gitAccessToken=xxx&githubAccessToken=xxx&userId=1&username=xxx&email=xxx&role=dev-fe&isNew=false
+                    ### 콜백 JSON 응답 예시
+                    ```json
+                    {
+                      "isNew": true,
+                      "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                      "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+                    }
                     ```
                     """
     )
@@ -210,6 +214,11 @@ public class AuthController {
                 refreshToken
         );
 
+        String frontendRedirect = decodeState(state).get("frontendRedirect");
+        if (frontendRedirect != null && !frontendRedirect.isBlank()) {
+            return redirectWithTokens(frontendRedirect, isNew, accessToken, refreshToken);
+        }
+
         return ResponseEntity.ok(response);
     }
 
@@ -220,22 +229,26 @@ public class AuthController {
                     **Kakao 소셜 로그인의 시작점입니다.**
                     
                     이 엔드포인트를 호출하면 Kakao OAuth 인증 페이지로 자동 리다이렉트됩니다.
-                    사용자가 Kakao에서 인증을 완료하면 `/auth/kakao/callback`으로 콜백됩니다.
+                    사용자가 Kakao에서 인증을 완료하면 숨김 처리된 `/auth/kakao/callback`으로 콜백됩니다.
+                    현재 콜백은 `isNew`, `accessToken`, `refreshToken` JSON 응답을 발급합니다.
                     
                     ### 사용 방법
                     1. **브라우저에서** 이 URL을 직접 열거나 `<a>` 태그로 연결합니다
-                    2. `frontendRedirect` 파라미터에 로그인 성공 후 돌아갈 프론트엔드 URL을 지정합니다
-                    3. Kakao 인증 완료 → 콜백 → JWT 발급 → `frontendRedirect` URL로 리다이렉트
+                    2. `frontendRedirect`, `role` 파라미터는 OAuth `state`에 보존됩니다
+                    3. Kakao 인증 완료 → 콜백 → JWT 발급
                     
                     ### 호출 예시
                     ```
                     GET /auth/kakao/login?frontendRedirect=http://localhost:3000/auth/callback&role=pm
                     ```
                     
-                    ### 리다이렉트 결과 (frontendRedirect로 전달되는 쿼리 파라미터)
-                    ```
-                    {frontendRedirect}?success=true&provider=kakao&accessToken=xxx&refreshToken=xxx
-                    &kakaoAccessToken=xxx&userId=1&username=xxx&email=xxx&role=pm&isNew=false
+                    ### 콜백 JSON 응답 예시
+                    ```json
+                    {
+                      "isNew": true,
+                      "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                      "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+                    }
                     ```
                     """
     )
@@ -346,7 +359,23 @@ public class AuthController {
                 refreshToken
         );
 
+        String frontendRedirect = decodeState(state).get("frontendRedirect");
+        if (frontendRedirect != null && !frontendRedirect.isBlank()) {
+            return redirectWithTokens(frontendRedirect, isNew, accessToken, refreshToken);
+        }
+
         return ResponseEntity.ok(response);
+    }
+
+    private ResponseEntity<?> redirectWithTokens(String frontendRedirect, boolean isNew, String accessToken, String refreshToken) {
+        String redirectUrl = frontendRedirect
+                + "#isNew=" + isNew
+                + "&accessToken=" + URLEncoder.encode(accessToken, StandardCharsets.UTF_8)
+                + "&refreshToken=" + URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(redirectUrl))
+                .build();
     }
 
     private String encodeState(String frontendRedirect, String role) {

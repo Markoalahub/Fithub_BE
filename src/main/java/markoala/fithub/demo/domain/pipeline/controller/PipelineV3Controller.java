@@ -55,6 +55,7 @@ public class PipelineV3Controller {
             @ApiResponse(responseCode = "200", description = "파이프라인 생성 성공",
                     content = @Content(schema = @Schema(implementation = PipelineV3Response.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (project_id 누락 또는 PDF 아님)"),
+            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<PipelineV3Response> generateV3Pipeline(
