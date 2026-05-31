@@ -1,5 +1,7 @@
 package markoala.fithub.demo.domain.project;
 
+import markoala.fithub.demo.domain.outbox.OutboxEvent;
+import markoala.fithub.demo.domain.outbox.OutboxEventRepository;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.domain.user.JobRole;
@@ -20,6 +22,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
+    private final OutboxEventRepository outboxEventRepository;
 
     public Project getProject(Long projectId) {
         return projectRepository.findById(projectId)
@@ -101,6 +104,7 @@ public class ProjectService {
         projectMemberRepository.deleteAll(members);
 
         projectRepository.delete(project);
+        outboxEventRepository.save(OutboxEvent.projectDeleted(projectId));
     }
 
     @Transactional

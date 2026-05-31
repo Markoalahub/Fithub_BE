@@ -8,16 +8,11 @@ import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
-import markoala.fithub.demo.domain.issue.GithubRepository;
 import markoala.fithub.demo.domain.issue.RepositoryRepository;
+import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * v3 파이프라인 생성 서비스 계층.
@@ -44,7 +39,7 @@ public class PipelineV3Service {
     /**
      * 프로젝트 정보와 파이프라인 정보를 결합하여 반환 (API Composition)
      */
-    public markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse getProjectPipelineOverview(Long projectId) {
+    public ProjectPipelineOverviewResponse getProjectPipelineOverview(Long projectId) {
         log.info("[PipelineV3Service] Composing project-pipeline overview for project {}", projectId);
         
         // 1. Spring DB에서 프로젝트 정보 조회
@@ -55,7 +50,7 @@ public class PipelineV3Service {
         PipelineListResponse pipelineList = pipelineV3Client.getPipelinesByProject(projectId);
 
         // 3. 데이터 결합
-        return new markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse(
+        return new ProjectPipelineOverviewResponse(
                 project.getId(),
                 project.getName(),
                 project.getDescription(),

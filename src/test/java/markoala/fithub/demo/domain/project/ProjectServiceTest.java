@@ -1,5 +1,7 @@
 package markoala.fithub.demo.domain.project;
 
+import markoala.fithub.demo.domain.outbox.OutboxEventRepository;
+import markoala.fithub.demo.domain.outbox.OutboxEventType;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
@@ -35,6 +37,9 @@ class ProjectServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
 
     @InjectMocks
     private ProjectService projectService;
@@ -195,6 +200,10 @@ class ProjectServiceTest {
 
         verify(projectMemberRepository).deleteAll(List.of(member));
         verify(projectRepository).delete(project);
+        verify(outboxEventRepository).save(argThat(event ->
+                event.getEventType() == OutboxEventType.PROJECT_DELETED
+                        && event.getAggregateId().equals(1L)
+        ));
     }
 
     @Test
