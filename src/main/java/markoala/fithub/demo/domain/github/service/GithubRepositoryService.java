@@ -10,9 +10,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +31,9 @@ public class GithubRepositoryService {
 
     @Value("${github.client-secret}")
     private String githubClientSecret;
+
+    @Value("${github.redirect-uri}")
+    private String githubRedirectUri;
 
     public List<GithubRepositoryDto> getMyRepos() {
         var auth = githubWebClientService.getAuthInfo();
@@ -108,15 +113,16 @@ public class GithubRepositoryService {
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .build();
 
-        Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("client_id", githubClientId);
-        requestBody.put("client_secret", githubClientSecret);
-        requestBody.put("code", code);
+        MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
+        requestBody.add("client_id", githubClientId);
+        requestBody.add("client_secret", githubClientSecret);
+        requestBody.add("code", code);
+        requestBody.add("redirect_uri", githubRedirectUri);
 
         Map<String, Object> response = webClient.post()
                 .uri("/login/oauth/access_token")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(BodyInserters.fromFormData(requestBody))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block();

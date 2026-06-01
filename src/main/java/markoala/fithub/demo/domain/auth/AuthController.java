@@ -82,7 +82,7 @@ public class AuthController {
         this.kakaoService = kakaoService;
     }
 
-    @GetMapping("/login")
+    @GetMapping("/github/login")
     @Operation(
             summary = "GitHub OAuth 로그인 시작",
             description = """
@@ -93,7 +93,7 @@ public class AuthController {
                     
                     ### 호출 예시
                     ```
-                    GET /auth/login?frontendRedirect=http://localhost:3000/auth/callback&role=dev-fe
+                    GET /auth/github/login?frontendRedirect=http://localhost:3000/auth/callback&role=dev-fe
                     ```
                     
                     ### 콜백 JSON 응답 예시 (`frontendRedirect` 미사용 시)
@@ -419,7 +419,7 @@ public class AuthController {
                     추가 정보(이름, 이메일, 직군)를 등록하고 JWT 토큰을 발급받습니다.
                     
                     ### 사용 시점
-                    1. `/auth/login` 또는 `/auth/kakao/login`으로 소셜 로그인 수행
+                    1. `/auth/github/login` 또는 `/auth/kakao/login`으로 소셜 로그인 수행
                     2. 콜백 응답에서 `isNew: true` 확인
                     3. 이 엔드포인트를 호출하여 회원가입 완료
                     
