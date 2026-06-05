@@ -38,7 +38,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/pipelines")
-@Tag(name = "Pipelines V3", description = "AI 파이프라인 v3 (Vertical Slice) 생성 API")
+@Tag(name = "Pipelines", description = "AI 파이프라인 생성 및 관리 API")
 public class PipelineV3Controller {
 
     private final PipelineV3Service pipelineV3Service;
@@ -107,7 +107,7 @@ public class PipelineV3Controller {
         return ResponseEntity.ok(pipelineV3Service.getPipeline(pipelineId));
     }
 
-    @PatchMapping({"/{pipelineId}/github", "/{pipelineId}/github-repository"})
+    @PatchMapping("/{pipelineId}/github")
     @Operation(
             summary = "파이프라인 GitHub repository URL 연결",
             description = "특정 파이프라인의 GitHub repository URL만 부분 수정합니다. " +
@@ -140,6 +140,15 @@ public class PipelineV3Controller {
             @Valid @RequestBody PipelineGithubRepositoryUpdateRequest request
     ) {
         return ResponseEntity.ok(pipelineV3Service.updatePipelineGithubRepository(pipelineId, request));
+    }
+
+    @Hidden
+    @PatchMapping("/{pipelineId}/github-repository")
+    public ResponseEntity<PipelineV3Response> updatePipelineGithubRepositoryLegacy(
+            @PathVariable Long pipelineId,
+            @Valid @RequestBody PipelineGithubRepositoryUpdateRequest request
+    ) {
+        return updatePipelineGithubRepository(pipelineId, request);
     }
 
     @Hidden
