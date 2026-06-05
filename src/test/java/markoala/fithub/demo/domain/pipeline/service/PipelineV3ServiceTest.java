@@ -4,6 +4,7 @@ import markoala.fithub.demo.domain.issue.GitHubIssueService;
 import markoala.fithub.demo.domain.issue.IssueRepository;
 import markoala.fithub.demo.domain.issue.RepositoryRepository;
 import markoala.fithub.demo.domain.pipeline.client.PipelineV3Client;
+import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineSummaryResponse;
@@ -134,5 +135,29 @@ class PipelineV3ServiceTest {
         verify(pipelineV3Client).generateV3Pipeline(argThat(req -> req != null && "BE".equals(req.category())));
         verify(pipelineV3Client).generateV3Pipeline(argThat(req -> req != null && "FE".equals(req.category())));
         verify(pipelineV3Client, never()).generateV3Pipeline(argThat(req -> req != null && "ALL".equals(req.category())));
+    }
+
+    @Test
+    @DisplayName("파이프라인 GitHub repository URL 연결은 클라이언트 연결 API를 호출한다")
+    void updatePipelineGithubRepository_CallsClient() {
+        PipelineGithubRepositoryUpdateRequest request = new PipelineGithubRepositoryUpdateRequest(
+                "https://github.com/Markoalahub/Fithub_BE"
+        );
+        PipelineV3Response expected = new PipelineV3Response(
+                33L,
+                1L,
+                "BE",
+                1,
+                "Spring Boot",
+                "https://github.com/Markoalahub/Fithub_BE",
+                List.of()
+        );
+
+        when(pipelineV3Client.updatePipelineGithubRepository(33L, request)).thenReturn(expected);
+
+        PipelineV3Response actual = pipelineV3Service.updatePipelineGithubRepository(33L, request);
+
+        assertThat(actual).isSameAs(expected);
+        verify(pipelineV3Client).updatePipelineGithubRepository(33L, request);
     }
 }

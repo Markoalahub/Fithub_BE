@@ -1,5 +1,6 @@
 package markoala.fithub.demo.domain.pipeline.controller;
 
+import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,9 +23,11 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -120,6 +124,45 @@ public class PipelineV3ControllerTest {
                         .param("requirements", "Missing project_id")
                         .param("category", "BE")
                         .header("Authorization", "Bearer token"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("파이프라인 GitHub repository URL 연결 성공")
+    void updatePipelineGithubRepository_Success() throws Exception {
+        PipelineV3Response response = new PipelineV3Response(
+                33L,
+                1L,
+                "BE",
+                1,
+                "Spring Boot",
+                "https://github.com/Markoalahub/Fithub_BE",
+                List.of()
+        );
+
+        when(pipelineV3Service.updatePipelineGithubRepository(eq(33L), any(PipelineGithubRepositoryUpdateRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/pipelines/33/github-repository")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"github_repo_url\":\"https://github.com/Markoalahub/Fithub_BE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pipe_id").value(33L))
+                .andExpect(jsonPath("$.github_repo_url").value("https://github.com/Markoalahub/Fithub_BE"));
+
+        verify(pipelineV3Service).updatePipelineGithubRepository(eq(33L), argThat(request ->
+                request != null && "https://github.com/Markoalahub/Fithub_BE".equals(request.githubRepoUrl())
+        ));
+    }
+
+    @Test
+    @DisplayName("파이프라인 GitHub repository URL 연결 실패 - URL 형식 오류 (400)")
+    void updatePipelineGithubRepository_InvalidUrl() throws Exception {
+        mockMvc.perform(patch("/pipelines/33/github-repository")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"github_repo_url\":\"git@github.com:Markoalahub/Fithub_BE.git\"}"))
                 .andExpect(status().isBadRequest());
     }
 }

@@ -3,6 +3,7 @@ package markoala.fithub.demo.domain.pipeline.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -15,10 +16,13 @@ import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
 import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest;
 import markoala.fithub.demo.domain.pipeline.dto.CreateIssueFromStepRequest;
+import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
+import jakarta.validation.Valid;
+import markoala.fithub.demo.global.exception.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -101,6 +105,41 @@ public class PipelineV3Controller {
             @PathVariable Long pipelineId
     ) {
         return ResponseEntity.ok(pipelineV3Service.getPipeline(pipelineId));
+    }
+
+    @PatchMapping("/{pipelineId}/github-repository")
+    @Operation(
+            summary = "파이프라인 GitHub repository URL 연결",
+            description = "특정 파이프라인의 GitHub repository URL만 부분 수정합니다. " +
+                    "하나의 GitHub repository URL은 하나의 파이프라인에만 연결됩니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "GitHub repository URL 연결 성공",
+                    content = @Content(schema = @Schema(implementation = PipelineV3Response.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "파이프라인을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 다른 파이프라인에 연결된 GitHub repository URL",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<PipelineV3Response> updatePipelineGithubRepository(
+            @Parameter(description = "GitHub repository URL을 연결할 파이프라인 ID", required = true, example = "33")
+            @PathVariable Long pipelineId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "파이프라인에 연결할 GitHub repository URL",
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = PipelineGithubRepositoryUpdateRequest.class),
+                            examples = @ExampleObject(
+                                    name = "GitHub repository URL 연결 요청",
+                                    value = "{\"github_repo_url\":\"https://github.com/Markoalahub/Fithub_BE\"}"
+                            )
+                    )
+            )
+            @Valid @RequestBody PipelineGithubRepositoryUpdateRequest request
+    ) {
+        return ResponseEntity.ok(pipelineV3Service.updatePipelineGithubRepository(pipelineId, request));
     }
 
     @Hidden

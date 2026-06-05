@@ -6,6 +6,7 @@ import markoala.fithub.demo.domain.issue.IssueRepository;
 import markoala.fithub.demo.domain.pipeline.client.PipelineV3Client;
 
 import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest;
+import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
@@ -177,6 +178,14 @@ public class PipelineV3Service {
     public PipelineV3Response getPipeline(Long pipelineId) {
         log.info("[PipelineV3Service] Fetching pipeline {}", pipelineId);
         return pipelineV3Client.getPipeline(pipelineId);
+    }
+
+    /**
+     * 파이프라인 GitHub repository URL 연결.
+     */
+    public PipelineV3Response updatePipelineGithubRepository(Long pipelineId, PipelineGithubRepositoryUpdateRequest request) {
+        log.info("[PipelineV3Service] Updating pipeline {} GitHub repository URL", pipelineId);
+        return pipelineV3Client.updatePipelineGithubRepository(pipelineId, request);
     }
 
     /**

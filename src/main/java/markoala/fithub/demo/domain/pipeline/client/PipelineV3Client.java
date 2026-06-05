@@ -5,18 +5,21 @@ import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
+import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 
@@ -28,9 +31,16 @@ public class PipelineV3Client {
 
     private static final Logger log = LoggerFactory.getLogger(PipelineV3Client.class);
     private final RestClient restClient;
+    private final WebClient webClient;
 
-    public PipelineV3Client(@Qualifier("fastApiRestClient") RestClient restClient) {
+    public PipelineV3Client(
+            @Qualifier("fastApiRestClient") RestClient restClient,
+            @Value("${fastapi.base-url:http://localhost:8000}") String fastApiBaseUrl
+    ) {
         this.restClient = restClient;
+        this.webClient = WebClient.builder()
+                .baseUrl(fastApiBaseUrl)
+                .build();
     }
 
     /**
@@ -118,24 +128,26 @@ public class PipelineV3Client {
      * 파이프라인 스텝 수정 (v3 응답 타입 사용)
      */
     public PipelineStepV3Response updatePipelineStep(Long stepId, PipelineStepUpdateRequest request) {
-        return restClient.patch()
+        return webClient.patch()
                 .uri("/pipelines/steps/{stepId}", stepId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
+                .bodyValue(request)
                 .retrieve()
-                .body(PipelineStepV3Response.class);
+                .bodyToMono(PipelineStepV3Response.class)
+                .block();
     }
 
     /**
      * 파이프라인 스텝 최종 승인 (회의 정보 기반)
      */
     public PipelineStepV3Response confirmPipelineStep(Long stepId, MeetingStepConfirmationRequest request) {
-        return restClient.patch()
+        return webClient.patch()
                 .uri("/pipelines/steps/{stepId}/confirm", stepId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
+                .bodyValue(request)
                 .retrieve()
-                .body(PipelineStepV3Response.class);
+                .bodyToMono(PipelineStepV3Response.class)
+                .block();
     }
     /**
      * 파이프라인 단건 조회
@@ -145,6 +157,19 @@ public class PipelineV3Client {
                 .uri("/pipelines/{pipelineId}", pipelineId)
                 .retrieve()
                 .body(PipelineV3Response.class);
+    }
+
+    /**
+     * 파이프라인 GitHub repository URL 연결
+     */
+    public PipelineV3Response updatePipelineGithubRepository(Long pipelineId, PipelineGithubRepositoryUpdateRequest request) {
+        return webClient.patch()
+                .uri("/pipelines/{pipelineId}/github-repository", pipelineId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(PipelineV3Response.class)
+                .block();
     }
 
     /**
