@@ -62,13 +62,19 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}")
-    @Operation(summary = "프로젝트 상세 조회", description = "프로젝트 정보와 참여 중인 사용자 목록 및 팀원 수를 조회합니다.")
+    @Operation(
+            summary = "프로젝트 상세 조회",
+            description = "프로젝트 ID로 프로젝트명, 프로젝트 내용, 참여 사용자 ID/닉네임 목록, 팀원 총 인원 수를 조회합니다."
+    )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "프로젝트 조회 성공",
                     content = @Content(schema = @Schema(implementation = ProjectDetailResponse.class))),
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
     })
-    public ResponseEntity<ProjectDetailResponse> getProject(@PathVariable Long projectId) {
+    public ResponseEntity<ProjectDetailResponse> getProject(
+            @Parameter(description = "조회할 프로젝트 ID", required = true, example = "1")
+            @PathVariable Long projectId
+    ) {
         return ResponseEntity.ok(projectService.getProjectDetail(projectId));
     }
 
