@@ -9,7 +9,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
+import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
@@ -23,8 +24,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/projects")
@@ -218,28 +221,35 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/pipelines")
-    @Operation(summary = "프로젝트의 파이프라인 목록 조회", description = "특정 프로젝트에 연결된 파이프라인 목록을 조회합니다. 프로젝트 멤버만 조회 가능합니다.")
+    @Operation(
+            summary = "프로젝트 파이프라인 조회",
+            description = "category가 없으면 프로젝트 파이프라인 요약 목록을, category가 있으면 해당 직군의 최신 파이프라인을 조회합니다."
+    )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "파이프라인 조회 성공"),
-            @ApiResponse(responseCode = "403", description = "해당 프로젝트의 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
-    public ResponseEntity<PipelineListResponse> getProjectPipelines(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long projectId
+    public ResponseEntity<?> getProjectPipelines(
+            @PathVariable Long projectId,
+            @RequestParam(value = "category", required = false) String category
     ) {
         // 1. 존재하는 프로젝트인지 확인 (존재하지 않으면 404)
         projectService.getProject(projectId);
 
-        // 2. 해당 프로젝트의 멤버인지 확인 (멤버가 아니면 403)
-        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        HttpStatus.FORBIDDEN, "해당 프로젝트의 파이프라인을 조회할 권한이 없습니다."
-                ));
+        try {
+            if (category == null || category.isBlank()) {
+                ProjectPipelineSummaryListResponse response = pipelineV3Service.getProjectPipelineSummaries(projectId);
+                return ResponseEntity.ok(response);
+            }
 
-        // 3. 파이프라인 조회 (AI 서버 호출)
-        PipelineListResponse response = pipelineV3Service.getPipelinesByProject(projectId);
-        return ResponseEntity.ok(response);
+            PipelineV3Response response = pipelineV3Service.getLatestProjectPipeline(projectId, category);
+            return ResponseEntity.ok(response);
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return ResponseEntity.ok(Map.of("message", "생성된 파이프라인이 없습니다."));
+            }
+            throw e;
+        }
     }
 }

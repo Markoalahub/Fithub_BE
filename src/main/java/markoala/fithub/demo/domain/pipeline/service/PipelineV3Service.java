@@ -14,6 +14,7 @@ import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.domain.issue.RepositoryRepository;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
 import markoala.fithub.demo.domain.project.Project;
 import markoala.fithub.demo.domain.project.ProjectRepository;
 import markoala.fithub.demo.domain.user.User;
@@ -22,6 +23,7 @@ import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import java.util.List;
 
 /**
  * v3 파이프라인 생성 서비스 계층.
@@ -44,6 +46,7 @@ public class PipelineV3Service {
     private final JwtProvider jwtProvider;
     private final UserService userService;
     private final ProjectRepository projectRepository;
+    private static final List<String> ALL_CATEGORIES = List.of("BE", "FE");
 
     /**
      * 프로젝트 정보와 파이프라인 정보를 결합하여 반환 (API Composition)
@@ -78,9 +81,9 @@ public class PipelineV3Service {
      * @param requirements 요구사항 텍스트 (필수)
      * @param category     카테고리 (선택, 기본값 "BE")
      * @param prdFile      PRD 파일 (선택)
-     * @return FastAPI 응답 PipelineV3Response (v3 DTO)
+     * @return category가 ALL이면 PipelineListResponse, 그 외에는 PipelineV3Response
      */
-    public PipelineV3Response generateV3Pipeline(PipelineV3Request request) {
+    public Object generateV3Pipeline(PipelineV3Request request) {
         log.info("[PipelineV3Service] Generating v3 pipeline — projectId={}, category={}", 
                 request.projectId(), request.category());
 
@@ -88,6 +91,24 @@ public class PipelineV3Service {
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."
                 ));
+
+        String category = request.category() == null ? "BE" : request.category().trim().toUpperCase();
+        if ("ALL".equals(category)) {
+            List<PipelineV3Response> pipelines = ALL_CATEGORIES.stream()
+                    .map(categoryName -> pipelineV3Client.generateV3Pipeline(new PipelineV3Request(
+                            request.projectId(),
+                            request.requirements(),
+                            categoryName,
+                            request.techStack(),
+                            request.file()
+                    )))
+                    .toList();
+
+            log.info("[PipelineV3Service] v3 ALL pipelines generated — projectId={}, total={}",
+                    request.projectId(), pipelines.size());
+
+            return new PipelineListResponse(pipelines, (long) pipelines.size());
+        }
 
         PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
 
@@ -108,6 +129,22 @@ public class PipelineV3Service {
     public PipelineListResponse getPipelinesByProject(Long projectId) {
         log.info("[PipelineV3Service] Fetching pipelines for project {}", projectId);
         return pipelineV3Client.getPipelinesByProject(projectId);
+    }
+
+    /**
+     * 프로젝트별 파이프라인 요약 목록 조회.
+     */
+    public ProjectPipelineSummaryListResponse getProjectPipelineSummaries(Long projectId) {
+        log.info("[PipelineV3Service] Fetching pipeline summaries for project {}", projectId);
+        return pipelineV3Client.getProjectPipelineSummaries(projectId);
+    }
+
+    /**
+     * 프로젝트 + 카테고리 기준 최신 파이프라인 조회.
+     */
+    public PipelineV3Response getLatestProjectPipeline(Long projectId, String category) {
+        log.info("[PipelineV3Service] Fetching latest pipeline for project {}, category {}", projectId, category);
+        return pipelineV3Client.getLatestProjectPipeline(projectId, category);
     }
 
     /**

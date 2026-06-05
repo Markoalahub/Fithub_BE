@@ -4,6 +4,7 @@ import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRe
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
+import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
@@ -76,6 +77,29 @@ public class PipelineV3Client {
                 .uri("/pipelines/project/{projectId}", projectId)
                 .retrieve()
                 .body(PipelineListResponse.class);
+    }
+
+    /**
+     * 프로젝트 파이프라인 요약 목록 조회
+     */
+    public ProjectPipelineSummaryListResponse getProjectPipelineSummaries(Long projectId) {
+        return restClient.get()
+                .uri("/projects/{projectId}/pipelines", projectId)
+                .retrieve()
+                .body(ProjectPipelineSummaryListResponse.class);
+    }
+
+    /**
+     * 프로젝트 + 카테고리 기준 최신 파이프라인 상세 조회
+     */
+    public PipelineV3Response getLatestProjectPipeline(Long projectId, String category) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/projects/{projectId}/pipelines")
+                        .queryParam("category", category)
+                        .build(projectId))
+                .retrieve()
+                .body(PipelineV3Response.class);
     }
 
     /**

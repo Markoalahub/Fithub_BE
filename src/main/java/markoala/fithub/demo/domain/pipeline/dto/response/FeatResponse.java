@@ -5,8 +5,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record FeatResponse(
-    @JsonAlias({"feat_id", "id"}) Long featId,
-    @JsonAlias({"feat_title", "step_task_description"}) String featTitle,
-    @JsonAlias({"feat_details", "step_details"}) List<String> featDetails,
+    @JsonProperty("feat_id")
+    @JsonAlias("id")
+    Long featId,
+    @JsonProperty("feat_title")
+    @JsonAlias("step_task_description")
+    String featTitle,
+    @JsonProperty("feat_details")
+    @JsonAlias("step_details")
+    List<String> featDetails,
     Integer priority
 ) {}

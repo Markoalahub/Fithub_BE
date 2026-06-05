@@ -60,7 +60,7 @@ public class PipelineV3Controller {
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
-    public ResponseEntity<PipelineV3Response> generateV3Pipeline(
+    public ResponseEntity<?> generateV3Pipeline(
             @Parameter(description = "프로젝트 ID", required = true)
             @RequestParam("project_id") Long projectId,
 
@@ -86,7 +86,7 @@ public class PipelineV3Controller {
         }
 
         PipelineV3Request request = new PipelineV3Request(projectId, requirements, category, techStack, file);
-        PipelineV3Response response = pipelineV3Service.generateV3Pipeline(request);
+        Object response = pipelineV3Service.generateV3Pipeline(request);
         return ResponseEntity.ok(response);
     }
 

@@ -1,5 +1,6 @@
 package markoala.fithub.demo.domain.pipeline.controller;
 
+import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
 import markoala.fithub.demo.global.config.SecurityConfig;
@@ -15,9 +16,12 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,7 +64,37 @@ public class PipelineV3ControllerTest {
                         
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1));
+                .andExpect(jsonPath("$.pipe_id").value(1));
+    }
+
+    @Test
+    @DisplayName("ALL 파이프라인 생성 요청은 목록 응답을 반환한다")
+    void generateV3Pipeline_AllCategoryReturnsList() throws Exception {
+        PipelineListResponse response = new PipelineListResponse(
+                List.of(
+                        new PipelineV3Response(10L, 1L, "BE", 1, "Spring Boot, React", Collections.emptyList()),
+                        new PipelineV3Response(11L, 1L, "FE", 1, "Spring Boot, React", Collections.emptyList())
+                ),
+                2L
+        );
+
+        when(pipelineV3Service.generateV3Pipeline(any())).thenReturn(response);
+
+        mockMvc.perform(multipart("/pipelines/generate")
+                        .param("project_id", "1")
+                        .param("requirements", "Make a login feature")
+                        .param("category", "ALL")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2L))
+                .andExpect(jsonPath("$.pipelines[0].pipe_id").value(10L))
+                .andExpect(jsonPath("$.pipelines[0].category").value("BE"))
+                .andExpect(jsonPath("$.pipelines[1].pipe_id").value(11L))
+                .andExpect(jsonPath("$.pipelines[1].category").value("FE"));
+
+        verify(pipelineV3Service).generateV3Pipeline(argThat(request ->
+                request != null && "ALL".equals(request.category())
+        ));
     }
 
     @Test

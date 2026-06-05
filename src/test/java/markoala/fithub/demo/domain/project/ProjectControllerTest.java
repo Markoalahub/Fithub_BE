@@ -1,6 +1,10 @@
 package markoala.fithub.demo.domain.project;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import markoala.fithub.demo.domain.pipeline.dto.response.FeatResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.PipelineSummaryResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
+import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
 import markoala.fithub.demo.global.config.SecurityConfig;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
@@ -19,10 +23,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
-import java.util.Optional;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -173,13 +178,97 @@ public class ProjectControllerTest {
     }
 
     @Test
-    @DisplayName("내 프로젝트 파이프라인 조회 실패 - 멤버 아님 (403)")
-    void getProjectPipelines_Forbidden() throws Exception {
-        when(projectService.getProject(1L)).thenReturn(null);
-        when(projectMemberRepository.findByProjectIdAndUserId(1L, 1L)).thenReturn(Optional.empty());
+    @DisplayName("프로젝트 파이프라인 조회 - 카테고리 없으면 요약 목록 조회")
+    void getProjectPipelines_SummaryWithoutCategory() throws Exception {
+        Project project = Project.createProject("Fithub", "desc", 1L);
+        ProjectPipelineSummaryListResponse response = new ProjectPipelineSummaryListResponse(
+                1L,
+                List.of(new PipelineSummaryResponse(33L, "FE 파이프라인 33", "FE")),
+                1L
+        );
+
+        when(projectService.getProject(1L)).thenReturn(project);
+        when(pipelineV3Service.getProjectPipelineSummaries(1L)).thenReturn(response);
 
         mockMvc.perform(get("/projects/1/pipelines")
                         .header("Authorization", "Bearer token"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.project_id").value(1L))
+                .andExpect(jsonPath("$.total").value(1L))
+                .andExpect(jsonPath("$.pipelines[0].pipe_id").value(33L))
+                .andExpect(jsonPath("$.pipelines[0].pipeline_name").value("FE 파이프라인 33"))
+                .andExpect(jsonPath("$.pipelines[0].category").value("FE"));
+
+        verify(projectService).getProject(1L);
+        verify(pipelineV3Service).getProjectPipelineSummaries(1L);
+        verify(pipelineV3Service, never()).getLatestProjectPipeline(anyLong(), anyString());
+        verify(projectMemberRepository, never()).findByProjectIdAndUserId(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("프로젝트 파이프라인 조회 - 카테고리가 있으면 최신 상세 조회")
+    void getProjectPipelines_LatestByCategory() throws Exception {
+        Project project = Project.createProject("Fithub", "desc", 1L);
+        PipelineV3Response response = new PipelineV3Response(
+                33L,
+                1L,
+                "FE",
+                15,
+                "React, expo",
+                List.of(new FeatResponse(
+                        225L,
+                        "[UI 컴포넌트] 사용자 입력 폼 개발",
+                        List.of("[UI] 총 예산 상한가 입력 필드 컴포넌트 개발"),
+                        1
+                ))
+        );
+
+        when(projectService.getProject(1L)).thenReturn(project);
+        when(pipelineV3Service.getLatestProjectPipeline(1L, "FE")).thenReturn(response);
+
+        mockMvc.perform(get("/projects/1/pipelines")
+                        .param("category", "FE")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pipe_id").value(33L))
+                .andExpect(jsonPath("$.project_id").value(1L))
+                .andExpect(jsonPath("$.category").value("FE"))
+                .andExpect(jsonPath("$.version").value(15))
+                .andExpect(jsonPath("$.tech_stack").value("React, expo"))
+                .andExpect(jsonPath("$.feats[0].feat_id").value(225L))
+                .andExpect(jsonPath("$.feats[0].feat_title").value("[UI 컴포넌트] 사용자 입력 폼 개발"))
+                .andExpect(jsonPath("$.feats[0].feat_details[0]").value("[UI] 총 예산 상한가 입력 필드 컴포넌트 개발"))
+                .andExpect(jsonPath("$.feats[0].priority").value(1));
+
+        verify(projectService).getProject(1L);
+        verify(pipelineV3Service).getLatestProjectPipeline(1L, "FE");
+        verify(pipelineV3Service, never()).getProjectPipelineSummaries(anyLong());
+        verify(projectMemberRepository, never()).findByProjectIdAndUserId(anyLong(), anyLong());
+    }
+
+    @Test
+    @DisplayName("프로젝트 파이프라인 조회 - FastAPI 404는 생성된 파이프라인 없음 메시지로 반환")
+    void getProjectPipelines_NotFoundFromFastApiReturnsEmptyMessage() throws Exception {
+        Project project = Project.createProject("Fithub", "desc", 1L);
+
+        when(projectService.getProject(1L)).thenReturn(project);
+        when(pipelineV3Service.getLatestProjectPipeline(1L, "FE"))
+                .thenThrow(HttpClientErrorException.create(
+                        HttpStatus.NOT_FOUND,
+                        "Not Found",
+                        null,
+                        null,
+                        null
+                ));
+
+        mockMvc.perform(get("/projects/1/pipelines")
+                        .param("category", "FE")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("생성된 파이프라인이 없습니다."));
+
+        verify(projectService).getProject(1L);
+        verify(pipelineV3Service).getLatestProjectPipeline(1L, "FE");
+        verify(projectMemberRepository, never()).findByProjectIdAndUserId(anyLong(), anyLong());
     }
 }
