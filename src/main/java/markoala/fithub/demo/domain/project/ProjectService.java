@@ -4,6 +4,8 @@ import markoala.fithub.demo.domain.outbox.OutboxEvent;
 import markoala.fithub.demo.domain.outbox.OutboxEventRepository;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailMemberResponse;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
 import markoala.fithub.demo.domain.user.JobRole;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,6 +41,37 @@ public class ProjectService {
                 .map(ProjectMember::getProjectId)
                 .toList();
         return projectRepository.findAllById(projectIds);
+    }
+
+    public ProjectDetailResponse getProjectDetail(Long projectId) {
+        Project project = getProject(projectId);
+        List<ProjectMember> projectMembers = projectMemberRepository.findByProjectId(projectId);
+        List<Long> userIds = projectMembers.stream()
+                .map(ProjectMember::getUserId)
+                .toList();
+        Map<Long, User> usersById = userIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                user -> user,
+                                (existing, replacement) -> existing
+                        ));
+        List<ProjectDetailMemberResponse> members = projectMembers.stream()
+                .map(member -> {
+                    User user = usersById.get(member.getUserId());
+                    String nickname = user == null ? null : user.getNickname();
+                    return new ProjectDetailMemberResponse(member.getUserId(), nickname);
+                })
+                .toList();
+
+        return new ProjectDetailResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                members,
+                members.size()
+        );
     }
 
     @Transactional

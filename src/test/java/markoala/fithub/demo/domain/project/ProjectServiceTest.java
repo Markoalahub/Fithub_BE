@@ -3,6 +3,7 @@ package markoala.fithub.demo.domain.project;
 import markoala.fithub.demo.domain.outbox.OutboxEventRepository;
 import markoala.fithub.demo.domain.outbox.OutboxEventType;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
 import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
@@ -23,6 +24,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -79,6 +81,78 @@ class ProjectServiceTest {
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).getId()).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("getProjectDetail - 성공")
+    void getProjectDetail_Success() {
+        Project project = new Project(100L, "Fithub", "Project description", 1L, null, null);
+        ProjectMember plannerMember = new ProjectMember(10L, 100L, 1L, "PLANNER", null, null);
+        ProjectMember backendMember = new ProjectMember(11L, 100L, 2L, "BACKEND", null, null);
+        User planner = new User(1L, "plannerUser", "planner", "planner@test.com", "social1", true, null, null, null, null);
+        User backend = new User(2L, "backendUser", "backend", "backend@test.com", "social2", true, null, null, null, null);
+
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(projectMemberRepository.findByProjectId(100L)).thenReturn(List.of(plannerMember, backendMember));
+        when(userRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(planner, backend));
+
+        ProjectDetailResponse result = projectService.getProjectDetail(100L);
+
+        assertThat(result.projectId()).isEqualTo(100L);
+        assertThat(result.projectName()).isEqualTo("Fithub");
+        assertThat(result.projectDescription()).isEqualTo("Project description");
+        assertThat(result.memberCount()).isEqualTo(2);
+        assertThat(result.members())
+                .extracting("userId", "nickname")
+                .containsExactly(
+                        tuple(1L, "planner"),
+                        tuple(2L, "backend")
+                );
+
+        verify(projectRepository).findById(100L);
+        verify(projectMemberRepository).findByProjectId(100L);
+        verify(userRepository).findAllById(List.of(1L, 2L));
+    }
+
+    @Test
+    @DisplayName("getProjectDetail - 멤버 사용자 정보가 없으면 닉네임 null로 반환")
+    void getProjectDetail_MissingUserNickname() {
+        Project project = new Project(100L, "Fithub", "Project description", 1L, null, null);
+        ProjectMember plannerMember = new ProjectMember(10L, 100L, 1L, "PLANNER", null, null);
+        ProjectMember backendMember = new ProjectMember(11L, 100L, 2L, "BACKEND", null, null);
+        User planner = new User(1L, "plannerUser", "planner", "planner@test.com", "social1", true, null, null, null, null);
+
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(projectMemberRepository.findByProjectId(100L)).thenReturn(List.of(plannerMember, backendMember));
+        when(userRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(planner));
+
+        ProjectDetailResponse result = projectService.getProjectDetail(100L);
+
+        assertThat(result.memberCount()).isEqualTo(2);
+        assertThat(result.members())
+                .extracting("userId", "nickname")
+                .containsExactly(
+                        tuple(1L, "planner"),
+                        tuple(2L, null)
+                );
+
+        verify(projectRepository).findById(100L);
+        verify(projectMemberRepository).findByProjectId(100L);
+        verify(userRepository).findAllById(List.of(1L, 2L));
+    }
+
+    @Test
+    @DisplayName("getProjectDetail - 실패 (프로젝트 없음)")
+    void getProjectDetail_NotFound() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> projectService.getProjectDetail(100L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("존재하지 않는 프로젝트 ID 입니다.");
+
+        verify(projectRepository).findById(100L);
+        verify(projectMemberRepository, never()).findByProjectId(anyLong());
+        verify(userRepository, never()).findAllById(any());
     }
 
     @Test

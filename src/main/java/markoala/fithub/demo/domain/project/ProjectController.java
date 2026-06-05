@@ -14,6 +14,7 @@ import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryL
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectInviteRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectInviteResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectMemberAddRequest;
@@ -60,16 +61,15 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getUserProjects(userId));
     }
 
-    @Hidden
     @GetMapping("/{projectId}")
-    @Operation(summary = "프로젝트 조회", description = "특정 프로젝트의 상세 정보를 조회합니다")
+    @Operation(summary = "프로젝트 상세 조회", description = "프로젝트 정보와 참여 중인 사용자 목록 및 팀원 수를 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "프로젝트 조회 성공",
-                    content = @Content(schema = @Schema(implementation = Project.class))),
+                    content = @Content(schema = @Schema(implementation = ProjectDetailResponse.class))),
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
     })
-    public ResponseEntity<Project> getProject(@PathVariable Long projectId) {
-        return ResponseEntity.ok(projectService.getProject(projectId));
+    public ResponseEntity<ProjectDetailResponse> getProject(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getProjectDetail(projectId));
     }
 
     @PostMapping

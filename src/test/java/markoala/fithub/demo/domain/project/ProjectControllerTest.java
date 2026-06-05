@@ -10,6 +10,8 @@ import markoala.fithub.demo.global.config.SecurityConfig;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailMemberResponse;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectInviteRequest;
 import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
 import markoala.fithub.demo.domain.user.UserRepository;
@@ -123,6 +125,51 @@ public class ProjectControllerTest {
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    @DisplayName("프로젝트 상세 조회 성공")
+    void getProjectDetail_Success() throws Exception {
+        ProjectDetailResponse response = new ProjectDetailResponse(
+                1L,
+                "Fithub",
+                "Project description",
+                List.of(
+                        new ProjectDetailMemberResponse(1L, "planner"),
+                        new ProjectDetailMemberResponse(2L, "backend")
+                ),
+                2
+        );
+
+        when(projectService.getProjectDetail(1L)).thenReturn(response);
+
+        mockMvc.perform(get("/projects/1")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.project_id").value(1L))
+                .andExpect(jsonPath("$.project_name").value("Fithub"))
+                .andExpect(jsonPath("$.project_description").value("Project description"))
+                .andExpect(jsonPath("$.members[0].user_id").value(1L))
+                .andExpect(jsonPath("$.members[0].nickname").value("planner"))
+                .andExpect(jsonPath("$.members[1].user_id").value(2L))
+                .andExpect(jsonPath("$.members[1].nickname").value("backend"))
+                .andExpect(jsonPath("$.member_count").value(2));
+
+        verify(projectService).getProjectDetail(1L);
+    }
+
+    @Test
+    @DisplayName("프로젝트 상세 조회 실패 - 프로젝트 없음 (404)")
+    void getProjectDetail_NotFound() throws Exception {
+        when(projectService.getProjectDetail(1L))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."));
+
+        mockMvc.perform(get("/projects/1")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("존재하지 않는 프로젝트 ID 입니다."));
+
+        verify(projectService).getProjectDetail(1L);
     }
 
     @Test
