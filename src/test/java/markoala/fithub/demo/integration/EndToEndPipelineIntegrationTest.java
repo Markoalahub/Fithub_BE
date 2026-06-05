@@ -113,7 +113,10 @@ class EndToEndPipelineIntegrationTest {
                 1,
                 "Python",
                 "2024-01-01T00:00:00Z",
-                "2024-04-12T00:00:00Z"
+                "2024-04-12T00:00:00Z",
+                "main",
+                "2024-04-12T00:00:00Z",
+                "https://github.com/KYH-99/travel-plan.git"
             )
         );
         when(githubRepositoryService.getMyRepos()).thenReturn(mockGithubRepos);
@@ -326,7 +329,8 @@ class EndToEndPipelineIntegrationTest {
             new GithubRepositoryDto(
                 1207474638L, "travel-plan", "KYH-99/travel-plan",
                 "https://github.com/KYH-99/travel-plan", "Travel planning app",
-                false, 1, 1, "Python", "2024-01-01T00:00:00Z", "2024-04-12T00:00:00Z"
+                false, 1, 1, "Python", "2024-01-01T00:00:00Z", "2024-04-12T00:00:00Z",
+                "main", "2024-04-12T00:00:00Z", "https://github.com/KYH-99/travel-plan.git"
             )
         );
         when(githubRepositoryService.getMyRepos()).thenReturn(mockGithubRepos);

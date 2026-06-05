@@ -3,6 +3,7 @@ package markoala.fithub.demo.domain.auth;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +20,9 @@ public class GithubWebClientService {
     private static final Logger log = LoggerFactory.getLogger(GithubWebClientService.class);
 
     private final UserService userService;
+
+    @Value("${github.api.url:https://api.github.com}")
+    private String githubApiBaseUrl;
 
     public GithubAuthInfo getAuthInfo() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -46,7 +50,7 @@ public class GithubWebClientService {
 
     public WebClient getWebClient(String accessToken) {
         return WebClient.builder()
-                .baseUrl("https://api.github.com")
+                .baseUrl(githubApiBaseUrl)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .build();
     }

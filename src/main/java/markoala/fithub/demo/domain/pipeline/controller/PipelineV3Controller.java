@@ -107,7 +107,7 @@ public class PipelineV3Controller {
         return ResponseEntity.ok(pipelineV3Service.getPipeline(pipelineId));
     }
 
-    @PatchMapping("/{pipelineId}/github-repository")
+    @PatchMapping({"/{pipelineId}/github", "/{pipelineId}/github-repository"})
     @Operation(
             summary = "파이프라인 GitHub repository URL 연결",
             description = "특정 파이프라인의 GitHub repository URL만 부분 수정합니다. " +

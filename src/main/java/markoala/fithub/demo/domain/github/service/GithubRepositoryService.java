@@ -1,22 +1,28 @@
 package markoala.fithub.demo.domain.github.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import markoala.fithub.demo.domain.auth.GithubWebClientService;
 import markoala.fithub.demo.domain.github.dto.GithubRepositoryDto;
+import markoala.fithub.demo.domain.user.User;
+import markoala.fithub.demo.domain.user.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +31,7 @@ public class GithubRepositoryService {
     private static final Logger log = LoggerFactory.getLogger(GithubRepositoryService.class);
 
     private final GithubWebClientService githubWebClientService;
+    private final UserService userService;
 
     @Value("${github.client-id}")
     private String githubClientId;
@@ -37,15 +44,59 @@ public class GithubRepositoryService {
 
     public List<GithubRepositoryDto> getMyRepos() {
         var auth = githubWebClientService.getAuthInfo();
-        var webClient = githubWebClientService.getWebClient(auth.accessToken());
+        return getMyReposByAccessToken(auth.accessToken());
+    }
 
-        // 1. 사용자 소유 및 협력자 레포
-        List<GithubRepositoryDto> userRepos = webClient.get()
+    public List<GithubRepositoryDto> getMyRepos(Long userId) {
+        return getMyReposByAccessToken(getGithubAccessToken(userId));
+    }
+
+    public GithubRepositoryDto getRepoDetail(Long userId, Long repoId) {
+        String githubAccessToken = getGithubAccessToken(userId);
+        var webClient = githubWebClientService.getWebClient(githubAccessToken);
+
+        try {
+            GithubRepositoryDto repo = webClient.get()
+                    .uri("/repositories/{repoId}", repoId)
+                    .retrieve()
+                    .bodyToMono(GithubRepositoryDto.class)
+                    .block();
+
+            if (repo == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "레포지토리를 찾을 수 없습니다.");
+            }
+
+            return repo;
+        } catch (WebClientResponseException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "레포지토리를 찾을 수 없습니다.", e);
+        }
+    }
+
+    private String getGithubAccessToken(Long userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId));
+
+        String githubAccessToken = user.getGithubAccessToken();
+        if (githubAccessToken == null || githubAccessToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GitHub access token이 저장되지 않았습니다. GitHub 로그인 후 다시 시도해주세요.");
+        }
+
+        return githubAccessToken;
+    }
+
+    private List<GithubRepositoryDto> getMyReposByAccessToken(String githubAccessToken) {
+        var webClient = githubWebClientService.getWebClient(githubAccessToken);
+
+        List<GithubRepositoryDto> repos = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/user/repos")
                         .queryParam("per_page", "100")
-                        .queryParam("type", "owner,collaborator")
-                        .queryParam("sort", "created")
+                        .queryParam("affiliation", "owner,collaborator,organization_member")
+                        .queryParam("sort", "updated")
                         .queryParam("direction", "desc")
                         .build())
                 .retrieve()
@@ -53,53 +104,16 @@ public class GithubRepositoryService {
                 .collectList()
                 .block();
 
-        // 2. 사용자가 속한 organization 목록
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> orgs = (List<Map<String, Object>>) (List<?>) webClient.get()
-                .uri("/user/orgs?per_page=100")
-                .retrieve()
-                .bodyToFlux(Map.class)
-                .collectList()
-                .block();
-
-        List<GithubRepositoryDto> orgRepos = new java.util.ArrayList<>();
-        if (orgs != null) {
-            for (Map<String, Object> org : orgs) {
-                String orgName = (String) org.get("login");
-                List<GithubRepositoryDto> repos = webClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/orgs/{org}/repos")
-                                .queryParam("per_page", "100")
-                                .queryParam("sort", "created")
-                                .queryParam("direction", "desc")
-                                .build(orgName))
-                        .retrieve()
-                        .bodyToFlux(GithubRepositoryDto.class)
-                        .collectList()
-                        .block();
-                if (repos != null) {
-                    orgRepos.addAll(repos);
-                }
-            }
-        }
-
-        // 3. 중복 제거 후 합치기
-        List<GithubRepositoryDto> allRepos = new java.util.ArrayList<>(userRepos != null ? userRepos : new java.util.ArrayList<>());
-        if (orgRepos != null) {
-            allRepos.addAll(orgRepos);
-        }
-
-        // ID 기준으로 중복 제거
-        return allRepos.stream()
-                .collect(java.util.stream.Collectors.toMap(
+        return new ArrayList<>(repos != null ? repos : List.<GithubRepositoryDto>of()).stream()
+                .collect(Collectors.toMap(
                         GithubRepositoryDto::id,
                         repo -> repo,
                         (existing, replacement) -> existing
                 ))
                 .values()
                 .stream()
-                .sorted((a, b) -> Long.compare(b.id(), a.id()))
-                .collect(java.util.stream.Collectors.toList());
+                .sorted((a, b) -> String.valueOf(b.updatedAt()).compareTo(String.valueOf(a.updatedAt())))
+                .collect(Collectors.toList());
     }
 
     /**
