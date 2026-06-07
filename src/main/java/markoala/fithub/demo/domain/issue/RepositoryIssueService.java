@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -133,16 +134,25 @@ public class RepositoryIssueService {
     private PipelineV3Response getPipeline(Long pipelineId) {
         log.info("[Repository Issue] Fetching pipeline for repository validation. pipelineId={}", pipelineId);
 
-        PipelineV3Response pipeline = pipelineV3Client.getPipeline(pipelineId);
-        if (pipeline == null) {
-            log.warn("[Repository Issue] Empty pipeline response. pipelineId={}", pipelineId);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인을 찾을 수 없습니다.");
+        try {
+            PipelineV3Response pipeline = pipelineV3Client.getPipeline(pipelineId);
+            if (pipeline == null) {
+                log.warn("[Repository Issue] Empty pipeline response. pipelineId={}", pipelineId);
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인 조회 결과가 없습니다.");
+            }
+
+            log.info("[Repository Issue] Pipeline fetched. pipelineId={}, projectId={}, category={}, pipelineGithubRepoUrl={}",
+                    pipeline.id(), pipeline.projectId(), pipeline.category(), pipeline.githubRepoUrl());
+
+            return pipeline;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)) {
+                log.warn("[Repository Issue] Pipeline not found from Python server. pipelineId={}, status={}, responseBody={}",
+                        pipelineId, e.getStatusCode().value(), e.getResponseBodyAsString());
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인 조회 결과가 없습니다.", e);
+            }
+            throw e;
         }
-
-        log.info("[Repository Issue] Pipeline fetched. pipelineId={}, projectId={}, category={}, pipelineGithubRepoUrl={}",
-                pipeline.id(), pipeline.projectId(), pipeline.category(), pipeline.githubRepoUrl());
-
-        return pipeline;
     }
 
     private String normalizeGithubRepoUrl(String repoUrl) {

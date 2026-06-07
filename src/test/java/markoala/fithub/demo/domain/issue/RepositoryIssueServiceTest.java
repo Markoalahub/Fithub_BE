@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -143,6 +144,37 @@ class RepositoryIssueServiceTest {
 
         verify(userService).findById(1L);
         verifyNoInteractions(pipelineV3Client);
+    }
+
+    @Test
+    @DisplayName("파이썬 서버에 파이프라인 조회 결과가 없으면 404 예외를 반환하고 GitHub API를 호출하지 않는다")
+    void createIssue_ThrowsNotFoundWhenPythonPipelineResponseNotFound() {
+        UserService userService = mock(UserService.class);
+        PipelineV3Client pipelineV3Client = mock(PipelineV3Client.class);
+        User user = new User(1L, "developer", "dev", "dev@test.com", "social", true, "gho_test_token", null, null, null);
+        GithubWebClientService webClientService = new GithubWebClientService(userService);
+        RepositoryIssueService repositoryIssueService = new RepositoryIssueService(userService, webClientService, pipelineV3Client);
+
+        when(userService.findById(1L)).thenReturn(Optional.of(user));
+        when(pipelineV3Client.getPipeline(99L)).thenThrow(HttpClientErrorException.create(
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                null,
+                null,
+                null
+        ));
+
+        assertThatThrownBy(() -> repositoryIssueService.createIssue(
+                1L,
+                99L,
+                new RepositoryIssueCreateRequest("로그인 API 구현", "본문")
+        )).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+            assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(ex.getReason()).isEqualTo("파이프라인 조회 결과가 없습니다.");
+        });
+
+        verify(userService).findById(1L);
+        verify(pipelineV3Client).getPipeline(99L);
     }
 
     @Test
