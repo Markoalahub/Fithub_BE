@@ -285,7 +285,7 @@ public class ProjectControllerTest {
                 .andExpect(jsonPath("$.feats[0].feat_id").value(225L))
                 .andExpect(jsonPath("$.feats[0].feat_title").value("[UI 컴포넌트] 사용자 입력 폼 개발"))
                 .andExpect(jsonPath("$.feats[0].feat_details[0]").value("[UI] 총 예산 상한가 입력 필드 컴포넌트 개발"))
-                .andExpect(jsonPath("$.feats[0].priority").value(1));
+                .andExpect(jsonPath("$.feats[0].priority").doesNotExist());
 
         verify(projectService).getProject(1L);
         verify(pipelineV3Service).getLatestProjectPipeline(1L, "FE");

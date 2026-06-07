@@ -1,6 +1,7 @@
 package markoala.fithub.demo.domain.pipeline.controller;
 
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
+import markoala.fithub.demo.domain.pipeline.dto.response.FeatResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
@@ -58,7 +59,19 @@ public class PipelineV3ControllerTest {
         );
 
         when(pipelineV3Service.generateV3Pipeline(any()))
-                .thenReturn(new PipelineV3Response(1L, 1L, "category", 1, "status", Collections.emptyList()));
+                .thenReturn(new PipelineV3Response(
+                        1L,
+                        1L,
+                        "BE",
+                        1,
+                        "Spring Boot",
+                        List.of(new FeatResponse(
+                                100L,
+                                "로그인 API 구현",
+                                List.of("JWT 기반 로그인 API를 구현합니다."),
+                                1
+                        ))
+                ));
 
         mockMvc.perform(multipart("/pipelines/generate")
                         .file(file)
@@ -68,7 +81,9 @@ public class PipelineV3ControllerTest {
                         
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.pipe_id").value(1));
+                .andExpect(jsonPath("$.pipe_id").value(1))
+                .andExpect(jsonPath("$.feats[0].feat_id").value(100L))
+                .andExpect(jsonPath("$.feats[0].priority").doesNotExist());
     }
 
     @Test
@@ -77,7 +92,19 @@ public class PipelineV3ControllerTest {
         PipelineListResponse response = new PipelineListResponse(
                 List.of(
                         new PipelineV3Response(10L, 1L, "BE", 1, "Spring Boot, React", Collections.emptyList()),
-                        new PipelineV3Response(11L, 1L, "FE", 1, "Spring Boot, React", Collections.emptyList())
+                        new PipelineV3Response(
+                                11L,
+                                1L,
+                                "FE",
+                                1,
+                                "Spring Boot, React",
+                                List.of(new FeatResponse(
+                                        101L,
+                                        "회원가입 화면 구현",
+                                        List.of("입력 폼을 구현합니다."),
+                                        2
+                                ))
+                        )
                 ),
                 2L
         );
@@ -94,7 +121,9 @@ public class PipelineV3ControllerTest {
                 .andExpect(jsonPath("$.pipelines[0].pipe_id").value(10L))
                 .andExpect(jsonPath("$.pipelines[0].category").value("BE"))
                 .andExpect(jsonPath("$.pipelines[1].pipe_id").value(11L))
-                .andExpect(jsonPath("$.pipelines[1].category").value("FE"));
+                .andExpect(jsonPath("$.pipelines[1].category").value("FE"))
+                .andExpect(jsonPath("$.pipelines[1].feats[0].feat_id").value(101L))
+                .andExpect(jsonPath("$.pipelines[1].feats[0].priority").doesNotExist());
 
         verify(pipelineV3Service).generateV3Pipeline(argThat(request ->
                 request != null && "ALL".equals(request.category())
@@ -137,19 +166,29 @@ public class PipelineV3ControllerTest {
                 1,
                 "Spring Boot",
                 "https://github.com/Markoalahub/Fithub_BE",
-                List.of()
+                List.of(new FeatResponse(
+                        200L,
+                        "로그인 API 구현",
+                        List.of("JWT 기반 로그인 API를 구현합니다."),
+                        1
+                ))
         );
 
         when(pipelineV3Service.updatePipelineGithubRepository(eq(33L), any(PipelineGithubRepositoryUpdateRequest.class)))
                 .thenReturn(response);
 
-        mockMvc.perform(patch("/pipelines/33/github-repository")
+        mockMvc.perform(patch("/pipelines/33/github")
                         .header("Authorization", "Bearer token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"github_repo_url\":\"https://github.com/Markoalahub/Fithub_BE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pipe_id").value(33L))
-                .andExpect(jsonPath("$.github_repo_url").value("https://github.com/Markoalahub/Fithub_BE"));
+                .andExpect(jsonPath("$.project_id").value(1L))
+                .andExpect(jsonPath("$.category").value("BE"))
+                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.tech_stack").value("Spring Boot"))
+                .andExpect(jsonPath("$.github_repo_url").value("https://github.com/Markoalahub/Fithub_BE"))
+                .andExpect(jsonPath("$.feats").doesNotExist());
 
         verify(pipelineV3Service).updatePipelineGithubRepository(eq(33L), argThat(request ->
                 request != null && "https://github.com/Markoalahub/Fithub_BE".equals(request.githubRepoUrl())
