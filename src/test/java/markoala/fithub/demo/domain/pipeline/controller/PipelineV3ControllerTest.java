@@ -160,6 +160,27 @@ public class PipelineV3ControllerTest {
     }
 
     @Test
+    @DisplayName("프로젝트 멤버가 아니면 파이프라인 생성 요청은 403을 반환한다")
+    void generateV3Pipeline_NotProjectMember() throws Exception {
+        when(pipelineV3Service.generateV3Pipeline(eq(1L), any()))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "해당 프로젝트에 속한 사용자만 파이프라인을 생성할 수 있습니다."));
+
+        mockMvc.perform(multipart("/pipelines/generate")
+                        .param("project_id", "1")
+                        .param("requirements", "Make a login feature")
+                        .param("category", "BE")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("해당 프로젝트에 속한 사용자만 파이프라인을 생성할 수 있습니다."));
+
+        verify(pipelineV3Service).generateV3Pipeline(eq(1L), argThat(request ->
+                request != null
+                        && request.projectId().equals(1L)
+                        && "BE".equals(request.category())
+        ));
+    }
+
+    @Test
     @DisplayName("파이프라인 생성 실패 - PDF가 아닌 파일 (400)")
     void generateV3Pipeline_NotPdfFail() throws Exception {
         MockMultipartFile file = new MockMultipartFile(

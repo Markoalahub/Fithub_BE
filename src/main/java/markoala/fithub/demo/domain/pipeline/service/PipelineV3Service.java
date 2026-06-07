@@ -17,13 +17,16 @@ import markoala.fithub.demo.domain.issue.RepositoryRepository;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
 import markoala.fithub.demo.domain.project.Project;
+import markoala.fithub.demo.domain.project.ProjectMemberRepository;
 import markoala.fithub.demo.domain.project.ProjectRepository;
 import markoala.fithub.demo.domain.user.User;
 import markoala.fithub.demo.domain.user.UserService;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 /**
@@ -47,6 +50,7 @@ public class PipelineV3Service {
     private final JwtProvider jwtProvider;
     private final UserService userService;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private static final List<String> ALL_CATEGORIES = List.of("BE", "FE");
 
     /**
@@ -89,9 +93,11 @@ public class PipelineV3Service {
                 userId, request.projectId(), request.category());
 
         projectRepository.findById(request.projectId())
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."
                 ));
+
+        validateProjectMember(userId, request.projectId());
 
         userService.consumeAiPipelineGenerationQuota(userId);
         try {
@@ -124,6 +130,18 @@ public class PipelineV3Service {
             userService.restoreAiPipelineGenerationQuota(userId);
             throw e;
         }
+    }
+
+    private void validateProjectMember(Long userId, Long projectId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "해당 프로젝트에 속한 사용자만 파이프라인을 생성할 수 있습니다."
+                ));
     }
 
     // ─────────────────────────────────────────────────────────────────

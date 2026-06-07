@@ -11,10 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import markoala.fithub.demo.domain.issue.Issue;
 import markoala.fithub.demo.domain.pipeline.dto.CreateIssueFromStepRequest;
-import markoala.fithub.demo.domain.pipeline.dto.MultiPipelineResponse;
-import markoala.fithub.demo.domain.pipeline.dto.PipelineGenerateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.PipelineListResponse;
-import markoala.fithub.demo.domain.pipeline.dto.PipelineResponse;
 import markoala.fithub.demo.domain.pipeline.dto.PipelineStepAddRequest;
 import markoala.fithub.demo.domain.pipeline.dto.PipelineStepResponse;
 import markoala.fithub.demo.domain.pipeline.dto.PipelineStepUpdateRequest;
@@ -40,32 +37,6 @@ public class PipelineController {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // 핵심: 프로젝트 내 모든 카테고리 파이프라인 일괄 생성 (PDF PRD 지원)
-    // ─────────────────────────────────────────────────────────────────
-    @PostMapping(value = "/generate-all", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(
-        summary = "전체 카테고리 파이프라인 생성 (PDF PRD 기반)",
-        description = "프로젝트에 등록된 모든 저장소의 카테고리(FE/BE/AI 등)별로 파이프라인을 생성합니다. " +
-                      "PDF 형태의 PRD 파일을 업로드하면 AI가 분석하여 직군별 파이프라인을 자동 생성합니다."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "전체 카테고리 파이프라인 생성 성공",
-                content = @Content(schema = @Schema(implementation = MultiPipelineResponse.class))),
-        @ApiResponse(responseCode = "400", description = "카테고리가 설정된 저장소 없음"),
-        @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
-    })
-    public ResponseEntity<MultiPipelineResponse> generateAllCategoryPipelines(
-            @Parameter(description = "프로젝트 ID", required = true)
-            @RequestParam Long projectId,
-            @Parameter(description = "PRD PDF 파일 (선택 - 없으면 요구사항 없이 생성)")
-            @RequestPart(value = "prdFile", required = false) MultipartFile prdFile
-    ) throws IOException {
-        byte[] pdfBytes = (prdFile != null && !prdFile.isEmpty()) ? prdFile.getBytes() : null;
-        MultiPipelineResponse response = pipelineService.generatePipelinesForAllCategories(projectId, pdfBytes);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    // ─────────────────────────────────────────────────────────────────
     @GetMapping("/project/{projectId}")
     @Operation(summary = "프로젝트 파이프라인 조회", description = "특정 프로젝트의 모든 파이프라인 목록을 조회합니다")
     @ApiResponses(value = {
@@ -79,23 +50,6 @@ public class PipelineController {
     ) {
         PipelineListResponse response = pipelineService.getPipelinesByProject(projectId);
         return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/generate")
-    @Operation(summary = "단일 파이프라인 생성",
-            description = "요구사항 텍스트를 기반으로 특정 카테고리의 AI 파이프라인을 생성합니다")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "파이프라인 생성 성공",
-                    content = @Content(schema = @Schema(implementation = PipelineResponse.class))),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
-            @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
-    })
-    public ResponseEntity<PipelineResponse> generatePipeline(
-            @Valid @RequestBody PipelineGenerateRequest request
-    ) {
-        PipelineResponse response = pipelineService.generatePipeline(
-                request.projectId(), request.requirements(), request.category());
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/{pipelineId}/steps")

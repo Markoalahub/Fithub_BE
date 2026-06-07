@@ -11,6 +11,8 @@ import markoala.fithub.demo.domain.pipeline.dto.response.PipelineSummaryResponse
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
 import markoala.fithub.demo.domain.project.Project;
+import markoala.fithub.demo.domain.project.ProjectMember;
+import markoala.fithub.demo.domain.project.ProjectMemberRepository;
 import markoala.fithub.demo.domain.project.ProjectRepository;
 import markoala.fithub.demo.domain.user.UserService;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
@@ -54,6 +56,9 @@ class PipelineV3ServiceTest {
 
     @Mock
     private ProjectRepository projectRepository;
+
+    @Mock
+    private ProjectMemberRepository projectMemberRepository;
 
     @InjectMocks
     private PipelineV3Service pipelineV3Service;
@@ -121,6 +126,8 @@ class PipelineV3ServiceTest {
         );
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 1L)));
+        when(projectMemberRepository.findByProjectIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(ProjectMember.createMember(1L, 1L, "PLANNER")));
         when(pipelineV3Client.generateV3Pipeline(argThat(req -> req != null && "BE".equals(req.category()))))
                 .thenReturn(beResponse);
         when(pipelineV3Client.generateV3Pipeline(argThat(req -> req != null && "FE".equals(req.category()))))
@@ -135,6 +142,7 @@ class PipelineV3ServiceTest {
                 .containsExactly("BE", "FE");
 
         verify(projectRepository).findById(1L);
+        verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
         verify(userService).consumeAiPipelineGenerationQuota(1L);
         verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
         verify(pipelineV3Client).generateV3Pipeline(argThat(req -> req != null && "BE".equals(req.category())));
@@ -154,6 +162,8 @@ class PipelineV3ServiceTest {
         );
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 1L)));
+        when(projectMemberRepository.findByProjectIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(ProjectMember.createMember(1L, 1L, "PLANNER")));
         doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "파이프라인 생성 가능 횟수를 모두 사용했습니다."))
                 .when(userService).consumeAiPipelineGenerationQuota(1L);
 
@@ -162,6 +172,7 @@ class PipelineV3ServiceTest {
                 .hasMessageContaining("파이프라인 생성 가능 횟수를 모두 사용했습니다.");
 
         verify(projectRepository).findById(1L);
+        verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
         verify(userService).consumeAiPipelineGenerationQuota(1L);
         verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
         verifyNoInteractions(pipelineV3Client);
@@ -179,6 +190,8 @@ class PipelineV3ServiceTest {
         );
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 1L)));
+        when(projectMemberRepository.findByProjectIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(ProjectMember.createMember(1L, 1L, "PLANNER")));
         when(pipelineV3Client.generateV3Pipeline(request)).thenThrow(new RuntimeException("FastAPI error"));
 
         assertThatThrownBy(() -> pipelineV3Service.generateV3Pipeline(1L, request))
@@ -186,9 +199,67 @@ class PipelineV3ServiceTest {
                 .hasMessageContaining("FastAPI error");
 
         verify(projectRepository).findById(1L);
+        verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
         verify(userService).consumeAiPipelineGenerationQuota(1L);
         verify(userService).restoreAiPipelineGenerationQuota(1L);
         verify(pipelineV3Client).generateV3Pipeline(request);
+    }
+
+    @Test
+    @DisplayName("프로젝트 멤버가 아니면 파이프라인 생성 횟수를 차감하지 않고 403을 반환한다")
+    void generateV3Pipeline_NotProjectMember_ForbiddenBeforeQuota() {
+        PipelineV3Request request = new PipelineV3Request(
+                1L,
+                "requirements",
+                "BE",
+                "Spring Boot",
+                null
+        );
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 2L)));
+        when(projectMemberRepository.findByProjectIdAndUserId(1L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> pipelineV3Service.generateV3Pipeline(1L, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(responseStatusException.getReason()).isEqualTo("해당 프로젝트에 속한 사용자만 파이프라인을 생성할 수 있습니다.");
+                });
+
+        verify(projectRepository).findById(1L);
+        verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
+        verify(userService, never()).consumeAiPipelineGenerationQuota(anyLong());
+        verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
+        verifyNoInteractions(pipelineV3Client);
+    }
+
+    @Test
+    @DisplayName("인증 사용자 ID가 없으면 파이프라인 생성 횟수를 차감하지 않고 401을 반환한다")
+    void generateV3Pipeline_Unauthenticated_UnauthorizedBeforeQuota() {
+        PipelineV3Request request = new PipelineV3Request(
+                1L,
+                "requirements",
+                "BE",
+                "Spring Boot",
+                null
+        );
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 1L)));
+
+        assertThatThrownBy(() -> pipelineV3Service.generateV3Pipeline(null, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+                    assertThat(responseStatusException.getReason()).isEqualTo("인증이 필요합니다.");
+                });
+
+        verify(projectRepository).findById(1L);
+        verify(projectMemberRepository, never()).findByProjectIdAndUserId(anyLong(), anyLong());
+        verify(userService, never()).consumeAiPipelineGenerationQuota(anyLong());
+        verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
+        verifyNoInteractions(pipelineV3Client);
     }
 
     @Test
