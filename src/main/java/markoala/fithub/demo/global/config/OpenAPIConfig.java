@@ -40,10 +40,6 @@ import org.springframework.context.annotation.Configuration;
                 @Server(
                         url = "http://localhost:8080",
                         description = "Local Development Server"
-                ),
-                @Server(
-                        url = "http://localhost:8000",
-                        description = "FastAPI Integration Server"
                 )
         }
 )

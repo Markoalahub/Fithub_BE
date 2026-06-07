@@ -6,6 +6,7 @@ import markoala.fithub.demo.domain.issue.IssueRepository;
 import markoala.fithub.demo.domain.pipeline.client.PipelineV3Client;
 
 import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest;
+import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
@@ -14,14 +15,19 @@ import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.domain.issue.RepositoryRepository;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineSummaryListResponse;
 import markoala.fithub.demo.domain.project.Project;
+import markoala.fithub.demo.domain.project.ProjectMemberRepository;
 import markoala.fithub.demo.domain.project.ProjectRepository;
 import markoala.fithub.demo.domain.user.User;
 import markoala.fithub.demo.domain.user.UserService;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.List;
 
 /**
  * v3 파이프라인 생성 서비스 계층.
@@ -44,6 +50,8 @@ public class PipelineV3Service {
     private final JwtProvider jwtProvider;
     private final UserService userService;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private static final List<String> ALL_CATEGORIES = List.of("BE", "FE");
 
     /**
      * 프로젝트 정보와 파이프라인 정보를 결합하여 반환 (API Composition)
@@ -78,24 +86,62 @@ public class PipelineV3Service {
      * @param requirements 요구사항 텍스트 (필수)
      * @param category     카테고리 (선택, 기본값 "BE")
      * @param prdFile      PRD 파일 (선택)
-     * @return FastAPI 응답 PipelineV3Response (v3 DTO)
+     * @return category가 ALL이면 PipelineListResponse, 그 외에는 PipelineV3Response
      */
-    public PipelineV3Response generateV3Pipeline(PipelineV3Request request) {
-        log.info("[PipelineV3Service] Generating v3 pipeline — projectId={}, category={}", 
-                request.projectId(), request.category());
+    public Object generateV3Pipeline(Long userId, PipelineV3Request request) {
+        log.info("[PipelineV3Service] Generating v3 pipeline — userId={}, projectId={}, category={}",
+                userId, request.projectId(), request.category());
 
         projectRepository.findById(request.projectId())
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."
                 ));
 
-        PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
+        validateProjectMember(userId, request.projectId());
 
-        log.info("[PipelineV3Service] v3 pipeline generated — id={}, version={}, feats={}",
-                response.id(), response.version(),
-                response.feats() != null ? response.feats().size() : 0);
+        userService.consumeAiPipelineGenerationQuota(userId);
+        try {
+            String category = request.category() == null ? "BE" : request.category().trim().toUpperCase();
+            if ("ALL".equals(category)) {
+                List<PipelineV3Response> pipelines = ALL_CATEGORIES.stream()
+                        .map(categoryName -> pipelineV3Client.generateV3Pipeline(new PipelineV3Request(
+                                request.projectId(),
+                                request.requirements(),
+                                categoryName,
+                                request.techStack(),
+                                request.file()
+                        )))
+                        .toList();
 
-        return response;
+                log.info("[PipelineV3Service] v3 ALL pipelines generated — userId={}, projectId={}, total={}",
+                        userId, request.projectId(), pipelines.size());
+
+                return new PipelineListResponse(pipelines, (long) pipelines.size());
+            }
+
+            PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
+
+            log.info("[PipelineV3Service] v3 pipeline generated — userId={}, id={}, version={}, feats={}",
+                    userId, response.id(), response.version(),
+                    response.feats() != null ? response.feats().size() : 0);
+
+            return response;
+        } catch (RuntimeException e) {
+            userService.restoreAiPipelineGenerationQuota(userId);
+            throw e;
+        }
+    }
+
+    private void validateProjectMember(Long userId, Long projectId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+
+        projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "해당 프로젝트에 속한 사용자만 파이프라인을 생성할 수 있습니다."
+                ));
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -108,6 +154,22 @@ public class PipelineV3Service {
     public PipelineListResponse getPipelinesByProject(Long projectId) {
         log.info("[PipelineV3Service] Fetching pipelines for project {}", projectId);
         return pipelineV3Client.getPipelinesByProject(projectId);
+    }
+
+    /**
+     * 프로젝트별 파이프라인 요약 목록 조회.
+     */
+    public ProjectPipelineSummaryListResponse getProjectPipelineSummaries(Long projectId) {
+        log.info("[PipelineV3Service] Fetching pipeline summaries for project {}", projectId);
+        return pipelineV3Client.getProjectPipelineSummaries(projectId);
+    }
+
+    /**
+     * 프로젝트 + 카테고리 기준 최신 파이프라인 조회.
+     */
+    public PipelineV3Response getLatestProjectPipeline(Long projectId, String category) {
+        log.info("[PipelineV3Service] Fetching latest pipeline for project {}, category {}", projectId, category);
+        return pipelineV3Client.getLatestProjectPipeline(projectId, category);
     }
 
     /**
@@ -140,6 +202,14 @@ public class PipelineV3Service {
     public PipelineV3Response getPipeline(Long pipelineId) {
         log.info("[PipelineV3Service] Fetching pipeline {}", pipelineId);
         return pipelineV3Client.getPipeline(pipelineId);
+    }
+
+    /**
+     * 파이프라인 GitHub repository URL 연결.
+     */
+    public PipelineV3Response updatePipelineGithubRepository(Long pipelineId, PipelineGithubRepositoryUpdateRequest request) {
+        log.info("[PipelineV3Service] Updating pipeline {} GitHub repository URL", pipelineId);
+        return pipelineV3Client.updatePipelineGithubRepository(pipelineId, request);
     }
 
     /**

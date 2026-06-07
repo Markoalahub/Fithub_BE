@@ -3,6 +3,7 @@ package markoala.fithub.demo.domain.pipeline.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -10,18 +11,23 @@ import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import markoala.fithub.demo.domain.issue.Issue;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineListResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.PipelineGithubRepositoryResponse;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.PipelineStepV3Response;
 import markoala.fithub.demo.domain.pipeline.dto.response.ProjectPipelineOverviewResponse;
 import markoala.fithub.demo.domain.meeting.dto.request.MeetingStepConfirmationRequest;
 import markoala.fithub.demo.domain.pipeline.dto.CreateIssueFromStepRequest;
+import markoala.fithub.demo.domain.pipeline.dto.request.PipelineGithubRepositoryUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineV3Request;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepCreateRequest;
 import markoala.fithub.demo.domain.pipeline.dto.request.PipelineStepUpdateRequest;
 import markoala.fithub.demo.domain.pipeline.service.PipelineV3Service;
+import jakarta.validation.Valid;
+import markoala.fithub.demo.global.exception.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -34,7 +40,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/pipelines")
-@Tag(name = "Pipelines V3", description = "AI 파이프라인 v3 (Vertical Slice) 생성 API")
+@Tag(name = "Pipelines", description = "AI 파이프라인 생성 및 관리 API")
 public class PipelineV3Controller {
 
     private final PipelineV3Service pipelineV3Service;
@@ -57,10 +63,16 @@ public class PipelineV3Controller {
             @ApiResponse(responseCode = "200", description = "파이프라인 생성 성공",
                     content = @Content(schema = @Schema(implementation = PipelineV3Response.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (project_id 누락 또는 PDF 아님)"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "403", description = "프로젝트 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
+            @ApiResponse(responseCode = "429", description = "파이프라인 생성 가능 횟수 초과"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
-    public ResponseEntity<PipelineV3Response> generateV3Pipeline(
+    public ResponseEntity<?> generateV3Pipeline(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal Long userId,
+
             @Parameter(description = "프로젝트 ID", required = true)
             @RequestParam("project_id") Long projectId,
 
@@ -86,7 +98,7 @@ public class PipelineV3Controller {
         }
 
         PipelineV3Request request = new PipelineV3Request(projectId, requirements, category, techStack, file);
-        PipelineV3Response response = pipelineV3Service.generateV3Pipeline(request);
+        Object response = pipelineV3Service.generateV3Pipeline(userId, request);
         return ResponseEntity.ok(response);
     }
 
@@ -101,6 +113,51 @@ public class PipelineV3Controller {
             @PathVariable Long pipelineId
     ) {
         return ResponseEntity.ok(pipelineV3Service.getPipeline(pipelineId));
+    }
+
+    @PatchMapping("/{pipelineId}/github")
+    @Operation(
+            summary = "파이프라인 GitHub repository URL 연결",
+            description = "특정 파이프라인의 GitHub repository URL만 부분 수정합니다. " +
+                    "하나의 GitHub repository URL은 하나의 파이프라인에만 연결됩니다."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "GitHub repository URL 연결 성공",
+                    content = @Content(schema = @Schema(implementation = PipelineGithubRepositoryResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "파이프라인을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 다른 파이프라인에 연결된 GitHub repository URL",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<PipelineGithubRepositoryResponse> updatePipelineGithubRepository(
+            @Parameter(description = "GitHub repository URL을 연결할 파이프라인 ID", required = true, example = "33")
+            @PathVariable Long pipelineId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "파이프라인에 연결할 GitHub repository URL",
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = PipelineGithubRepositoryUpdateRequest.class),
+                            examples = @ExampleObject(
+                                    name = "GitHub repository URL 연결 요청",
+                                    value = "{\"github_repo_url\":\"https://github.com/Markoalahub/Fithub_BE\"}"
+                            )
+                    )
+            )
+            @Valid @RequestBody PipelineGithubRepositoryUpdateRequest request
+    ) {
+        PipelineV3Response response = pipelineV3Service.updatePipelineGithubRepository(pipelineId, request);
+        return ResponseEntity.ok(PipelineGithubRepositoryResponse.from(response));
+    }
+
+    @Hidden
+    @PatchMapping("/{pipelineId}/github-repository")
+    public ResponseEntity<PipelineGithubRepositoryResponse> updatePipelineGithubRepositoryLegacy(
+            @PathVariable Long pipelineId,
+            @Valid @RequestBody PipelineGithubRepositoryUpdateRequest request
+    ) {
+        return updatePipelineGithubRepository(pipelineId, request);
     }
 
     @Hidden

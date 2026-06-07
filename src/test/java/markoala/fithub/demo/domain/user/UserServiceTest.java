@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.server.ResponseStatusException;
@@ -207,6 +208,71 @@ class UserServiceTest {
         
         assertThatThrownBy(() -> userService.registerUser("test@test.com", "user1", JobRole.BACKEND, "s1", "GITHUB", "token"))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("consumeAiPipelineGenerationQuota - 성공")
+    void consumeAiPipelineGenerationQuota_Success() {
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+                .thenReturn(1);
+
+        userService.consumeAiPipelineGenerationQuota(1L);
+
+        verify(userRepository).decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
+        verify(userRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("consumeAiPipelineGenerationQuota - 실패 (인증 사용자 없음)")
+    void consumeAiPipelineGenerationQuota_Unauthorized() {
+        assertThatThrownBy(() -> userService.consumeAiPipelineGenerationQuota(null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        verify(userRepository, never()).decreaseAiPipelineGenerationRemainingCount(any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("consumeAiPipelineGenerationQuota - 실패 (사용자 없음)")
+    void consumeAiPipelineGenerationQuota_UserNotFound() {
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+                .thenReturn(0);
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.consumeAiPipelineGenerationQuota(1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("사용자를 찾을 수 없습니다: 1");
+
+        verify(userRepository).findById(1L);
+    }
+
+    @Test
+    @DisplayName("consumeAiPipelineGenerationQuota - 실패 (생성 가능 횟수 초과)")
+    void consumeAiPipelineGenerationQuota_TooManyRequests() {
+        User user = new User(1L, "user1", "nick", "test@test.com", "s1", true, null, null, null, null);
+
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+                .thenReturn(0);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "aiPipelineGenerationRemainingCount", 0);
+
+        assertThatThrownBy(() -> userService.consumeAiPipelineGenerationQuota(1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+                    assertThat(responseStatusException.getReason()).isEqualTo("파이프라인 생성 가능 횟수를 모두 사용했습니다.");
+                });
+
+        verify(userRepository).findById(1L);
+    }
+
+    @Test
+    @DisplayName("restoreAiPipelineGenerationQuota - 차감된 생성 가능 횟수를 복구한다")
+    void restoreAiPipelineGenerationQuota_Success() {
+        userService.restoreAiPipelineGenerationQuota(1L);
+
+        verify(userRepository).restoreAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
     }
 
     @Test

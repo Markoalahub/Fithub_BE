@@ -4,15 +4,21 @@ import markoala.fithub.demo.domain.outbox.OutboxEvent;
 import markoala.fithub.demo.domain.outbox.OutboxEventRepository;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailMemberResponse;
+import markoala.fithub.demo.domain.project.dto.ProjectDetailResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
 import markoala.fithub.demo.domain.user.JobRole;
 import markoala.fithub.demo.domain.user.User;
 import markoala.fithub.demo.domain.user.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,6 +43,37 @@ public class ProjectService {
                 .map(ProjectMember::getProjectId)
                 .toList();
         return projectRepository.findAllById(projectIds);
+    }
+
+    public ProjectDetailResponse getProjectDetail(Long projectId) {
+        Project project = getProject(projectId);
+        List<ProjectMember> projectMembers = projectMemberRepository.findByProjectId(projectId);
+        List<Long> userIds = projectMembers.stream()
+                .map(ProjectMember::getUserId)
+                .toList();
+        Map<Long, User> usersById = userIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                user -> user,
+                                (existing, replacement) -> existing
+                        ));
+        List<ProjectDetailMemberResponse> members = projectMembers.stream()
+                .map(member -> {
+                    User user = usersById.get(member.getUserId());
+                    String nickname = user == null ? null : user.getNickname();
+                    return new ProjectDetailMemberResponse(member.getUserId(), nickname);
+                })
+                .toList();
+
+        return new ProjectDetailResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                members,
+                members.size()
+        );
     }
 
     @Transactional
@@ -77,8 +114,15 @@ public class ProjectService {
     }
 
     @Transactional
-    public Project updateProject(Long projectId, ProjectUpdateRequest request) {
+    public Project updateProject(Long userId, Long projectId, ProjectUpdateRequest request) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+
         Project project = getProject(projectId);
+        if (!project.getCreatorId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "프로젝트를 생성한 사람만 수정할 수 있습니다.");
+        }
 
         if (request.name() != null && !request.name().isBlank()) {
             project.updateName(request.name());

@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -34,6 +36,33 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(org.springframework.web.client.RestClientException.class)
     public ResponseEntity<ErrorResponse> handleRestClientException(org.springframework.web.client.RestClientException ex) {
+        log.error("[External API Error] {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErrorResponse.of(
+                        HttpStatus.SERVICE_UNAVAILABLE.value(),
+                        HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+                        "외부 API 서버 연결에 실패했습니다."
+                ));
+    }
+
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<ErrorResponse> handleWebClientResponseException(WebClientResponseException ex) {
+        log.error("[External API Response Error] {}", ex.getMessage(), ex);
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String responseBody = ex.getResponseBodyAsString();
+        String message = responseBody == null || responseBody.isBlank()
+                ? "외부 API 서버 요청이 실패했습니다."
+                : responseBody;
+        return ResponseEntity.status(status)
+                .body(ErrorResponse.of(
+                        status.value(),
+                        status.getReasonPhrase(),
+                        message
+                ));
+    }
+
+    @ExceptionHandler(WebClientException.class)
+    public ResponseEntity<ErrorResponse> handleWebClientException(WebClientException ex) {
         log.error("[External API Error] {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(ErrorResponse.of(

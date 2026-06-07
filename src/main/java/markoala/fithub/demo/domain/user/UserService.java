@@ -177,6 +177,39 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
+    @Transactional
+    public void consumeAiPipelineGenerationQuota(Long userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+
+        int updated = userRepository.decreaseAiPipelineGenerationRemainingCount(
+                userId,
+                User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT
+        );
+        if (updated > 0) {
+            return;
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId));
+
+        if (user.getAiPipelineGenerationRemainingCount() <= 0) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "파이프라인 생성 가능 횟수를 모두 사용했습니다.");
+        }
+
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "파이프라인 생성 가능 횟수 차감에 실패했습니다. 다시 시도해주세요.");
+    }
+
+    @Transactional
+    public void restoreAiPipelineGenerationQuota(Long userId) {
+        if (userId == null) {
+            return;
+        }
+
+        userRepository.restoreAiPipelineGenerationRemainingCount(userId, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
+    }
+
     /**
      * 회원가입 진행 (신규 유저 생성 및 연동)
      */

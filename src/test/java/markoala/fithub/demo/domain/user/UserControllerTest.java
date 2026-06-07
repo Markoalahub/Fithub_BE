@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import markoala.fithub.demo.global.config.SecurityConfig;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import markoala.fithub.demo.domain.user.dto.OnboardingRequest;
-import markoala.fithub.demo.domain.user.dto.UserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -120,5 +119,38 @@ public class UserControllerTest {
                         .header("Authorization", "Bearer token")
                         .param("nickname", "userNick"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("현재 로그인 사용자 조회 성공")
+    void getCurrentUser_Success() throws Exception {
+        User mockUser = new User(1L, "githubUser", "fitdev", "fitdev@test.com",
+                "social_1", true, null, null, null, null);
+        mockUser.updateJobRole(JobRole.BACKEND);
+
+        when(userService.findById(1L)).thenReturn(Optional.of(mockUser));
+
+        mockMvc.perform(get("/users/me")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_id").value(1L))
+                .andExpect(jsonPath("$.nickname").value("fitdev"))
+                .andExpect(jsonPath("$.job_role").value("BACKEND"))
+                .andExpect(jsonPath("$.ai_pipeline_generation_remaining_count").value(100));
+
+        verify(userService).findById(1L);
+    }
+
+    @Test
+    @DisplayName("현재 로그인 사용자 조회 실패 - 사용자 없음 (404)")
+    void getCurrentUser_NotFound() throws Exception {
+        when(userService.findById(1L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/users/me")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다: 1"));
+
+        verify(userService).findById(1L);
     }
 }

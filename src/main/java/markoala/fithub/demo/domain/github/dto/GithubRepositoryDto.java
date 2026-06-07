@@ -16,5 +16,8 @@ public record GithubRepositoryDto(
         @JsonProperty("open_issues_count") int openIssuesCount,
         String language,
         @JsonProperty("created_at") String createdAt,
-        @JsonProperty("updated_at") String updatedAt
+        @JsonProperty("updated_at") String updatedAt,
+        @JsonProperty("default_branch") String defaultBranch,
+        @JsonProperty("pushed_at") String pushedAt,
+        @JsonProperty("clone_url") String cloneUrl
 ) {}

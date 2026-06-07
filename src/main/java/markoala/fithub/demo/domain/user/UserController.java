@@ -8,10 +8,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import markoala.fithub.demo.domain.user.dto.OnboardingRequest;
+import markoala.fithub.demo.domain.user.dto.UserMeResponse;
 import markoala.fithub.demo.domain.user.dto.UserResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.Valid;
 import java.util.Map;
 
@@ -62,6 +65,21 @@ public class UserController {
         ));
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "현재 로그인 사용자 조회", description = "JWT에서 추출한 userId로 사용자 PK, 닉네임, 직군, AI 파이프라인 생성 가능 횟수를 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "현재 사용자 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
+    })
+    public ResponseEntity<UserMeResponse> getCurrentUser(
+            @AuthenticationPrincipal Long userId
+    ) {
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId));
+        return ResponseEntity.ok(UserMeResponse.from(user));
+    }
+
     @GetMapping()
     @Operation(summary = "닉네임으로 사용자 조회", description = "닉네임을 기반으로 사용자를 검색합니다.")
     @ApiResponses(value = {
@@ -73,7 +91,7 @@ public class UserController {
             @RequestParam String nickname
     ) {
         User user = userService.findByNickname(nickname)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + nickname));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + nickname));
         return ResponseEntity.ok(UserResponse.from(user));
     }
 }
