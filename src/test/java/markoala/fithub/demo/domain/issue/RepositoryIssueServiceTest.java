@@ -170,7 +170,7 @@ class RepositoryIssueServiceTest {
                 new RepositoryIssueCreateRequest("로그인 API 구현", "본문")
         )).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
             assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-            assertThat(ex.getReason()).isEqualTo("파이프라인 조회 결과가 없습니다.");
+            assertThat(ex.getReason()).isEqualTo("파이프라인을 찾을 수 없습니다.");
         });
 
         verify(userService).findById(1L);
@@ -204,10 +204,90 @@ class RepositoryIssueServiceTest {
                 new RepositoryIssueCreateRequest("로그인 API 구현", "본문")
         )).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
             assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-            assertThat(ex.getReason()).contains("파이프라인에 연결된 GitHub repository URL이 없습니다.");
+            assertThat(ex.getReason()).isEqualTo("파이프라인에 연결된 GitHub repository URL이 없습니다. 먼저 레포지토리를 연결해주세요.");
         });
 
         verify(userService).findById(1L);
         verify(pipelineV3Client).getPipeline(33L);
+    }
+
+    @Test
+    @DisplayName("파이프라인에 연결된 GitHub repository URL 형식이 올바르지 않으면 400 예외를 반환한다")
+    void createIssue_ThrowsBadRequestWhenPipelineRepositoryUrlInvalid() {
+        UserService userService = mock(UserService.class);
+        PipelineV3Client pipelineV3Client = mock(PipelineV3Client.class);
+        User user = new User(1L, "developer", "dev", "dev@test.com", "social", true, "gho_test_token", null, null, null);
+
+        when(userService.findById(1L)).thenReturn(Optional.of(user));
+        when(pipelineV3Client.getPipeline(33L)).thenReturn(new PipelineV3Response(
+                33L,
+                1L,
+                "BE",
+                1,
+                "Spring Boot",
+                "not-a-github-url",
+                List.of()
+        ));
+
+        GithubWebClientService webClientService = new GithubWebClientService(userService);
+        RepositoryIssueService repositoryIssueService = new RepositoryIssueService(userService, webClientService, pipelineV3Client);
+
+        assertThatThrownBy(() -> repositoryIssueService.createIssue(
+                1L,
+                33L,
+                new RepositoryIssueCreateRequest("로그인 API 구현", "본문")
+        )).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+            assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(ex.getReason()).isEqualTo("파이프라인에 연결된 GitHub repository URL 형식이 올바르지 않습니다.");
+        });
+
+        verify(userService).findById(1L);
+        verify(pipelineV3Client).getPipeline(33L);
+    }
+
+    @Test
+    @DisplayName("파이프라인 URL은 있지만 GitHub에서 레포지토리를 찾지 못하면 연결 URL 레포 없음 메시지를 반환한다")
+    void createIssue_ThrowsNotFoundWhenConnectedRepositoryNotFound() throws Exception {
+        UserService userService = mock(UserService.class);
+        PipelineV3Client pipelineV3Client = mock(PipelineV3Client.class);
+        User user = new User(1L, "developer", "dev", "dev@test.com", "social", true, "gho_test_token", null, null, null);
+
+        when(userService.findById(1L)).thenReturn(Optional.of(user));
+        when(pipelineV3Client.getPipeline(33L)).thenReturn(new PipelineV3Response(
+                33L,
+                1L,
+                "BE",
+                1,
+                "Spring Boot",
+                "https://github.com/Markoalahub/missing-repo",
+                List.of()
+        ));
+
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse()
+                    .setResponseCode(404)
+                    .setHeader("Content-Type", "application/json")
+                    .setBody("{\"message\":\"Not Found\"}"));
+            server.start();
+
+            GithubWebClientService webClientService = new GithubWebClientService(userService);
+            ReflectionTestUtils.setField(webClientService, "githubApiBaseUrl", server.url("/").toString());
+            RepositoryIssueService repositoryIssueService = new RepositoryIssueService(userService, webClientService, pipelineV3Client);
+
+            assertThatThrownBy(() -> repositoryIssueService.createIssue(
+                    1L,
+                    33L,
+                    new RepositoryIssueCreateRequest("로그인 API 구현", "본문")
+            )).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(ex.getReason()).isEqualTo("파이프라인에 연결된 GitHub repository URL의 레포지토리를 찾을 수 없습니다.");
+            });
+
+            RecordedRequest repoRequest = server.takeRequest();
+            assertThat(repoRequest.getMethod()).isEqualTo("GET");
+            assertThat(repoRequest.getPath()).isEqualTo("/repos/Markoalahub/missing-repo");
+            verify(userService).findById(1L);
+            verify(pipelineV3Client).getPipeline(33L);
+        }
     }
 }

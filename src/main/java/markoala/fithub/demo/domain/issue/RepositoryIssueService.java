@@ -93,7 +93,7 @@ public class RepositoryIssueService {
         String pipelineRepoUrl = pipeline.githubRepoUrl();
         if (pipelineRepoUrl == null || pipelineRepoUrl.isBlank()) {
             log.warn("[Repository Issue] Pipeline has no GitHub repository URL. pipelineId={}", pipeline.id());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "파이프라인에 연결된 GitHub repository URL이 없습니다.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "파이프라인에 연결된 GitHub repository URL이 없습니다. 먼저 레포지토리를 연결해주세요.");
         }
 
         String[] repoPath = extractRepoPath(pipelineRepoUrl);
@@ -111,7 +111,7 @@ public class RepositoryIssueService {
             if (repository == null) {
                 log.warn("[Repository Issue] Empty GitHub repository response. pipelineId={}, pipelineRepoUrl={}",
                         pipeline.id(), pipelineRepoUrl);
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "레포지토리를 찾을 수 없습니다.");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인에 연결된 GitHub repository URL의 레포지토리를 찾을 수 없습니다.");
             }
 
             log.info("[Repository Issue] GitHub repository fetched. pipelineId={}, repoId={}, repoFullName={}, repoHtmlUrl={}, pipelineRepoUrl={}, normalizedPipelineRepoUrl={}, normalizedGithubRepoUrl={}",
@@ -127,7 +127,7 @@ public class RepositoryIssueService {
         } catch (WebClientResponseException.NotFound e) {
             log.warn("[Repository Issue] GitHub repository not found. pipelineId={}, pipelineRepoUrl={}, owner={}, repo={}",
                     pipeline.id(), pipelineRepoUrl, repoPath[0], repoPath[1]);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "레포지토리를 찾을 수 없습니다.", e);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인에 연결된 GitHub repository URL의 레포지토리를 찾을 수 없습니다.", e);
         }
     }
 
@@ -138,7 +138,7 @@ public class RepositoryIssueService {
             PipelineV3Response pipeline = pipelineV3Client.getPipeline(pipelineId);
             if (pipeline == null) {
                 log.warn("[Repository Issue] Empty pipeline response. pipelineId={}", pipelineId);
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인 조회 결과가 없습니다.");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인을 찾을 수 없습니다.");
             }
 
             log.info("[Repository Issue] Pipeline fetched. pipelineId={}, projectId={}, category={}, pipelineGithubRepoUrl={}",
@@ -149,7 +149,7 @@ public class RepositoryIssueService {
             if (e.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)) {
                 log.warn("[Repository Issue] Pipeline not found from Python server. pipelineId={}, status={}, responseBody={}",
                         pipelineId, e.getStatusCode().value(), e.getResponseBodyAsString());
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인 조회 결과가 없습니다.", e);
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파이프라인을 찾을 수 없습니다.", e);
             }
             throw e;
         }
@@ -178,7 +178,7 @@ public class RepositoryIssueService {
 
         String[] parts = normalized.split("/");
         if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GitHub repository URL 형식이 올바르지 않습니다.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "파이프라인에 연결된 GitHub repository URL 형식이 올바르지 않습니다.");
         }
 
         return parts;

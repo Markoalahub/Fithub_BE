@@ -44,11 +44,11 @@ public class PipelineIssueController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "GitHub 이슈 생성 성공",
                     content = @Content(schema = @Schema(implementation = RepositoryIssueCreateResponse.class))),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 파이프라인 GitHub repository URL 오류",
+            @ApiResponse(responseCode = "400", description = "잘못된 요청, 파이프라인 GitHub repository URL 누락 또는 URL 형식 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 필요",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "사용자, 레포지토리 또는 파이프라인을 찾을 수 없음",
+            @ApiResponse(responseCode = "404", description = "사용자, 파이프라인 또는 연결된 GitHub 레포지토리를 찾을 수 없음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "GitHub API 연결 실패",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
