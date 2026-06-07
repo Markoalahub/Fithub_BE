@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User {
 
+    public static final int DEFAULT_AI_PIPELINE_GENERATION_LIMIT = 3;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -46,6 +48,9 @@ public class User {
 
     @Column(name = "kakao_access_token")
     private String kakaoAccessToken;
+
+    @Column(name = "ai_pipeline_generation_remaining_count", nullable = false, columnDefinition = "integer default 3")
+    private Integer aiPipelineGenerationRemainingCount = DEFAULT_AI_PIPELINE_GENERATION_LIMIT;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -103,6 +108,12 @@ public class User {
 
     public void updateJobRole(JobRole newJobRole) {
         this.jobRole = newJobRole;
+    }
+
+    public int getAiPipelineGenerationRemainingCount() {
+        return aiPipelineGenerationRemainingCount == null
+                ? DEFAULT_AI_PIPELINE_GENERATION_LIMIT
+                : aiPipelineGenerationRemainingCount;
     }
 
     public void completeRegistration(String email, JobRole jobRole) {

@@ -20,11 +20,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
@@ -123,7 +126,7 @@ class PipelineV3ServiceTest {
         when(pipelineV3Client.generateV3Pipeline(argThat(req -> req != null && "FE".equals(req.category()))))
                 .thenReturn(feResponse);
 
-        Object actual = pipelineV3Service.generateV3Pipeline(request);
+        Object actual = pipelineV3Service.generateV3Pipeline(1L, request);
 
         assertThat(actual).isInstanceOf(PipelineListResponse.class);
         PipelineListResponse response = (PipelineListResponse) actual;
@@ -132,9 +135,60 @@ class PipelineV3ServiceTest {
                 .containsExactly("BE", "FE");
 
         verify(projectRepository).findById(1L);
+        verify(userService).consumeAiPipelineGenerationQuota(1L);
+        verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
         verify(pipelineV3Client).generateV3Pipeline(argThat(req -> req != null && "BE".equals(req.category())));
         verify(pipelineV3Client).generateV3Pipeline(argThat(req -> req != null && "FE".equals(req.category())));
         verify(pipelineV3Client, never()).generateV3Pipeline(argThat(req -> req != null && "ALL".equals(req.category())));
+    }
+
+    @Test
+    @DisplayName("파이프라인 생성 한도를 모두 사용하면 FastAPI를 호출하지 않는다")
+    void generateV3Pipeline_QuotaExceeded_DoesNotCallClient() {
+        PipelineV3Request request = new PipelineV3Request(
+                1L,
+                "requirements",
+                "BE",
+                "Spring Boot",
+                null
+        );
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 1L)));
+        doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "파이프라인 생성 가능 횟수를 모두 사용했습니다."))
+                .when(userService).consumeAiPipelineGenerationQuota(1L);
+
+        assertThatThrownBy(() -> pipelineV3Service.generateV3Pipeline(1L, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("파이프라인 생성 가능 횟수를 모두 사용했습니다.");
+
+        verify(projectRepository).findById(1L);
+        verify(userService).consumeAiPipelineGenerationQuota(1L);
+        verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
+        verifyNoInteractions(pipelineV3Client);
+    }
+
+    @Test
+    @DisplayName("FastAPI 생성 호출이 실패하면 차감한 생성 횟수를 복구한다")
+    void generateV3Pipeline_RestoresQuotaWhenClientFails() {
+        PipelineV3Request request = new PipelineV3Request(
+                1L,
+                "requirements",
+                "BE",
+                "Spring Boot",
+                null
+        );
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 1L)));
+        when(pipelineV3Client.generateV3Pipeline(request)).thenThrow(new RuntimeException("FastAPI error"));
+
+        assertThatThrownBy(() -> pipelineV3Service.generateV3Pipeline(1L, request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("FastAPI error");
+
+        verify(projectRepository).findById(1L);
+        verify(userService).consumeAiPipelineGenerationQuota(1L);
+        verify(userService).restoreAiPipelineGenerationQuota(1L);
+        verify(pipelineV3Client).generateV3Pipeline(request);
     }
 
     @Test

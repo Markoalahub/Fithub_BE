@@ -84,40 +84,46 @@ public class PipelineV3Service {
      * @param prdFile      PRD 파일 (선택)
      * @return category가 ALL이면 PipelineListResponse, 그 외에는 PipelineV3Response
      */
-    public Object generateV3Pipeline(PipelineV3Request request) {
-        log.info("[PipelineV3Service] Generating v3 pipeline — projectId={}, category={}", 
-                request.projectId(), request.category());
+    public Object generateV3Pipeline(Long userId, PipelineV3Request request) {
+        log.info("[PipelineV3Service] Generating v3 pipeline — userId={}, projectId={}, category={}",
+                userId, request.projectId(), request.category());
 
         projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "존재하지 않는 프로젝트 ID 입니다."
                 ));
 
-        String category = request.category() == null ? "BE" : request.category().trim().toUpperCase();
-        if ("ALL".equals(category)) {
-            List<PipelineV3Response> pipelines = ALL_CATEGORIES.stream()
-                    .map(categoryName -> pipelineV3Client.generateV3Pipeline(new PipelineV3Request(
-                            request.projectId(),
-                            request.requirements(),
-                            categoryName,
-                            request.techStack(),
-                            request.file()
-                    )))
-                    .toList();
+        userService.consumeAiPipelineGenerationQuota(userId);
+        try {
+            String category = request.category() == null ? "BE" : request.category().trim().toUpperCase();
+            if ("ALL".equals(category)) {
+                List<PipelineV3Response> pipelines = ALL_CATEGORIES.stream()
+                        .map(categoryName -> pipelineV3Client.generateV3Pipeline(new PipelineV3Request(
+                                request.projectId(),
+                                request.requirements(),
+                                categoryName,
+                                request.techStack(),
+                                request.file()
+                        )))
+                        .toList();
 
-            log.info("[PipelineV3Service] v3 ALL pipelines generated — projectId={}, total={}",
-                    request.projectId(), pipelines.size());
+                log.info("[PipelineV3Service] v3 ALL pipelines generated — userId={}, projectId={}, total={}",
+                        userId, request.projectId(), pipelines.size());
 
-            return new PipelineListResponse(pipelines, (long) pipelines.size());
+                return new PipelineListResponse(pipelines, (long) pipelines.size());
+            }
+
+            PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
+
+            log.info("[PipelineV3Service] v3 pipeline generated — userId={}, id={}, version={}, feats={}",
+                    userId, response.id(), response.version(),
+                    response.feats() != null ? response.feats().size() : 0);
+
+            return response;
+        } catch (RuntimeException e) {
+            userService.restoreAiPipelineGenerationQuota(userId);
+            throw e;
         }
-
-        PipelineV3Response response = pipelineV3Client.generateV3Pipeline(request);
-
-        log.info("[PipelineV3Service] v3 pipeline generated — id={}, version={}, feats={}",
-                response.id(), response.version(),
-                response.feats() != null ? response.feats().size() : 0);
-
-        return response;
     }
 
     // ─────────────────────────────────────────────────────────────────

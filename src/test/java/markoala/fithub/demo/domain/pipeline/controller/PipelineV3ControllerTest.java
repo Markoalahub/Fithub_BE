@@ -14,9 +14,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
 import java.util.List;
@@ -58,7 +60,7 @@ public class PipelineV3ControllerTest {
                 "file", "test.pdf", "application/pdf", "dummy content".getBytes()
         );
 
-        when(pipelineV3Service.generateV3Pipeline(any()))
+        when(pipelineV3Service.generateV3Pipeline(eq(1L), any()))
                 .thenReturn(new PipelineV3Response(
                         1L,
                         1L,
@@ -84,6 +86,12 @@ public class PipelineV3ControllerTest {
                 .andExpect(jsonPath("$.pipe_id").value(1))
                 .andExpect(jsonPath("$.feats[0].feat_id").value(100L))
                 .andExpect(jsonPath("$.feats[0].priority").doesNotExist());
+
+        verify(pipelineV3Service).generateV3Pipeline(eq(1L), argThat(request ->
+                request != null
+                        && request.projectId().equals(1L)
+                        && "BE".equals(request.category())
+        ));
     }
 
     @Test
@@ -109,7 +117,7 @@ public class PipelineV3ControllerTest {
                 2L
         );
 
-        when(pipelineV3Service.generateV3Pipeline(any())).thenReturn(response);
+        when(pipelineV3Service.generateV3Pipeline(eq(1L), any())).thenReturn(response);
 
         mockMvc.perform(multipart("/pipelines/generate")
                         .param("project_id", "1")
@@ -125,8 +133,29 @@ public class PipelineV3ControllerTest {
                 .andExpect(jsonPath("$.pipelines[1].feats[0].feat_id").value(101L))
                 .andExpect(jsonPath("$.pipelines[1].feats[0].priority").doesNotExist());
 
-        verify(pipelineV3Service).generateV3Pipeline(argThat(request ->
-                request != null && "ALL".equals(request.category())
+        verify(pipelineV3Service).generateV3Pipeline(eq(1L), argThat(request ->
+                request != null
+                        && request.projectId().equals(1L)
+                        && "ALL".equals(request.category())
+        ));
+    }
+
+    @Test
+    @DisplayName("파이프라인 생성 가능 횟수를 모두 사용하면 429를 반환한다")
+    void generateV3Pipeline_QuotaExceeded() throws Exception {
+        when(pipelineV3Service.generateV3Pipeline(eq(1L), any()))
+                .thenThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "파이프라인 생성 가능 횟수를 모두 사용했습니다."));
+
+        mockMvc.perform(multipart("/pipelines/generate")
+                        .param("project_id", "1")
+                        .param("requirements", "Make a login feature")
+                        .param("category", "BE")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("파이프라인 생성 가능 횟수를 모두 사용했습니다."));
+
+        verify(pipelineV3Service).generateV3Pipeline(eq(1L), argThat(request ->
+                request != null && "BE".equals(request.category())
         ));
     }
 

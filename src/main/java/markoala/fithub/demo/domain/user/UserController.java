@@ -66,7 +66,7 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "현재 로그인 사용자 조회", description = "JWT에서 추출한 userId로 사용자 PK, 닉네임, 직군을 조회합니다.")
+    @Operation(summary = "현재 로그인 사용자 조회", description = "JWT에서 추출한 userId로 사용자 PK, 닉네임, 직군, AI 파이프라인 생성 가능 횟수를 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "현재 사용자 조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증 필요"),

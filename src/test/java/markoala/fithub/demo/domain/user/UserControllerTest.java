@@ -135,7 +135,8 @@ public class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(1L))
                 .andExpect(jsonPath("$.nickname").value("fitdev"))
-                .andExpect(jsonPath("$.job_role").value("BACKEND"));
+                .andExpect(jsonPath("$.job_role").value("BACKEND"))
+                .andExpect(jsonPath("$.ai_pipeline_generation_remaining_count").value(3));
 
         verify(userService).findById(1L);
     }

@@ -11,13 +11,17 @@ public record UserMeResponse(
         String nickname,
 
         @JsonProperty("job_role")
-        JobRole jobRole
+        JobRole jobRole,
+
+        @JsonProperty("ai_pipeline_generation_remaining_count")
+        int aiPipelineGenerationRemainingCount
 ) {
     public static UserMeResponse from(User user) {
         return new UserMeResponse(
                 user.getId(),
                 user.getNickname(),
-                user.getJobRole()
+                user.getJobRole(),
+                user.getAiPipelineGenerationRemainingCount()
         );
     }
 }

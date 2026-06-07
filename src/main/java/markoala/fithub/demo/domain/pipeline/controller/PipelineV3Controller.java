@@ -27,6 +27,7 @@ import markoala.fithub.demo.global.exception.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -62,10 +63,15 @@ public class PipelineV3Controller {
             @ApiResponse(responseCode = "200", description = "파이프라인 생성 성공",
                     content = @Content(schema = @Schema(implementation = PipelineV3Response.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (project_id 누락 또는 PDF 아님)"),
+            @ApiResponse(responseCode = "401", description = "인증 필요"),
             @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
+            @ApiResponse(responseCode = "429", description = "파이프라인 생성 가능 횟수 초과"),
             @ApiResponse(responseCode = "503", description = "FastAPI 서버 연결 실패")
     })
     public ResponseEntity<?> generateV3Pipeline(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal Long userId,
+
             @Parameter(description = "프로젝트 ID", required = true)
             @RequestParam("project_id") Long projectId,
 
@@ -91,7 +97,7 @@ public class PipelineV3Controller {
         }
 
         PipelineV3Request request = new PipelineV3Request(projectId, requirements, category, techStack, file);
-        Object response = pipelineV3Service.generateV3Pipeline(request);
+        Object response = pipelineV3Service.generateV3Pipeline(userId, request);
         return ResponseEntity.ok(response);
     }
 
