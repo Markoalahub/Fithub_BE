@@ -20,7 +20,9 @@ import markoala.fithub.demo.domain.project.dto.ProjectInviteResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectMemberAddRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectMemberRoleUpdateRequest;
 import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
+import markoala.fithub.demo.domain.project.dto.ProjectUpdateResponse;
 import markoala.fithub.demo.domain.user.UserRepository;
+import markoala.fithub.demo.global.exception.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -95,18 +97,33 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Hidden
     @PatchMapping("/{projectId}")
-    @Operation(summary = "프로젝트 정보 수정", description = "프로젝트의 이름과 설명을 수정합니다")
+    @Operation(summary = "프로젝트 정보 수정", description = "프로젝트를 생성한 사용자만 프로젝트 이름과 내용을 수정합니다.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "프로젝트 수정 성공"),
-            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음")
+            @ApiResponse(responseCode = "200", description = "프로젝트 수정 성공",
+                    content = @Content(schema = @Schema(implementation = ProjectUpdateResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 필요",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "프로젝트 생성자가 아님",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public ResponseEntity<Project> updateProject(
+    public ResponseEntity<ProjectUpdateResponse> updateProject(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "수정할 프로젝트 ID", required = true, example = "4")
             @PathVariable Long projectId,
-            @RequestBody ProjectUpdateRequest request
+            @Valid @RequestBody ProjectUpdateRequest request
     ) {
-        return ResponseEntity.ok(projectService.updateProject(projectId, request));
+        Project project = projectService.updateProject(userId, projectId, request);
+        return ResponseEntity.ok(new ProjectUpdateResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getCreatorId()
+        ));
     }
 
     @DeleteMapping("/{projectId}")

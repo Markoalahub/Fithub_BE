@@ -11,8 +11,10 @@ import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
 import markoala.fithub.demo.domain.user.JobRole;
 import markoala.fithub.demo.domain.user.User;
 import markoala.fithub.demo.domain.user.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -112,8 +114,15 @@ public class ProjectService {
     }
 
     @Transactional
-    public Project updateProject(Long projectId, ProjectUpdateRequest request) {
+    public Project updateProject(Long userId, Long projectId, ProjectUpdateRequest request) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+
         Project project = getProject(projectId);
+        if (!project.getCreatorId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "프로젝트를 생성한 사람만 수정할 수 있습니다.");
+        }
 
         if (request.name() != null && !request.name().isBlank()) {
             project.updateName(request.name());

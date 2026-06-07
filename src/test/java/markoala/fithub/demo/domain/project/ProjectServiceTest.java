@@ -240,10 +240,11 @@ class ProjectServiceTest {
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(projectRepository.save(project)).thenReturn(project);
 
-        Project result = projectService.updateProject(1L, request);
+        Project result = projectService.updateProject(1L, 1L, request);
 
         assertThat(result.getName()).isEqualTo("Updated Name");
         assertThat(result.getDescription()).isEqualTo("Updated Desc");
+        verify(projectRepository).save(project);
     }
 
     @Test
@@ -255,10 +256,42 @@ class ProjectServiceTest {
         when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
         when(projectRepository.save(project)).thenReturn(project);
 
-        Project result = projectService.updateProject(1L, request);
+        Project result = projectService.updateProject(1L, 1L, request);
 
         assertThat(result.getName()).isEqualTo("Old Name");
         assertThat(result.getDescription()).isEqualTo("Old Desc");
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    @DisplayName("updateProject - 실패 (인증 사용자 없음)")
+    void updateProject_Unauthorized() {
+        ProjectUpdateRequest request = new ProjectUpdateRequest("Updated Name", "Updated Desc");
+
+        assertThatThrownBy(() -> projectService.updateProject(null, 1L, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("인증이 필요합니다.");
+
+        verify(projectRepository, never()).findById(anyLong());
+        verify(projectRepository, never()).save(any(Project.class));
+    }
+
+    @Test
+    @DisplayName("updateProject - 실패 (생성자가 아님)")
+    void updateProject_NotCreator() {
+        ProjectUpdateRequest request = new ProjectUpdateRequest("Updated Name", "Updated Desc");
+        Project project = new Project(1L, "Old Name", "Old Desc", 2L, null, null);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+
+        assertThatThrownBy(() -> projectService.updateProject(1L, 1L, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("프로젝트를 생성한 사람만 수정할 수 있습니다.");
+
+        assertThat(project.getName()).isEqualTo("Old Name");
+        assertThat(project.getDescription()).isEqualTo("Old Desc");
+        verify(projectRepository).findById(1L);
+        verify(projectRepository, never()).save(any(Project.class));
     }
 
     @Test

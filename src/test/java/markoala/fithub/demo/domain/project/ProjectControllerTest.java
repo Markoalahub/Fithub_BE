@@ -13,6 +13,7 @@ import markoala.fithub.demo.domain.project.dto.ProjectCreateResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectDetailMemberResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectDetailResponse;
 import markoala.fithub.demo.domain.project.dto.ProjectInviteRequest;
+import markoala.fithub.demo.domain.project.dto.ProjectUpdateRequest;
 import markoala.fithub.demo.domain.project.exception.DuplicateProjectException;
 import markoala.fithub.demo.domain.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -170,6 +171,49 @@ public class ProjectControllerTest {
                 .andExpect(jsonPath("$.message").value("존재하지 않는 프로젝트 ID 입니다."));
 
         verify(projectService).getProjectDetail(1L);
+    }
+
+    @Test
+    @DisplayName("프로젝트 수정 성공")
+    void updateProject_Success() throws Exception {
+        ProjectUpdateRequest request = new ProjectUpdateRequest("Fithub 리뉴얼", "AI 협업 기능을 강화한 프로젝트");
+        Project updatedProject = new Project(1L, "Fithub 리뉴얼", "AI 협업 기능을 강화한 프로젝트", 1L, null, null);
+
+        when(projectService.updateProject(eq(1L), eq(1L), any(ProjectUpdateRequest.class))).thenReturn(updatedProject);
+
+        mockMvc.perform(patch("/projects/1")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.project_id").value(1L))
+                .andExpect(jsonPath("$.project_name").value("Fithub 리뉴얼"))
+                .andExpect(jsonPath("$.project_description").value("AI 협업 기능을 강화한 프로젝트"))
+                .andExpect(jsonPath("$.creator_id").value(1L));
+
+        verify(projectService).updateProject(eq(1L), eq(1L), argThat(updateRequest ->
+                updateRequest != null
+                        && "Fithub 리뉴얼".equals(updateRequest.name())
+                        && "AI 협업 기능을 강화한 프로젝트".equals(updateRequest.description())
+        ));
+    }
+
+    @Test
+    @DisplayName("프로젝트 수정 실패 - 생성자가 아님 (403)")
+    void updateProject_ForbiddenWhenNotCreator() throws Exception {
+        ProjectUpdateRequest request = new ProjectUpdateRequest("Fithub 리뉴얼", "AI 협업 기능을 강화한 프로젝트");
+
+        when(projectService.updateProject(eq(1L), eq(1L), any(ProjectUpdateRequest.class)))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "프로젝트를 생성한 사람만 수정할 수 있습니다."));
+
+        mockMvc.perform(patch("/projects/1")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("프로젝트를 생성한 사람만 수정할 수 있습니다."));
+
+        verify(projectService).updateProject(eq(1L), eq(1L), any(ProjectUpdateRequest.class));
     }
 
     @Test
