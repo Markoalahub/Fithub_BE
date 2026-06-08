@@ -11,16 +11,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -119,6 +123,36 @@ public class AuthControllerTest {
                 .andExpect(status().isFound())
                 .andExpect(header().string("Location",
                         "http://localhost:3000/auth/callback#isNew=true&accessToken=access-token&refreshToken=refresh-token"));
+    }
+
+    @Test
+    @DisplayName("refreshToken - 유효한 refreshToken이면 새 토큰을 재발급한다")
+    void refreshToken_Success() throws Exception {
+        User user = User.createUser("github-user", "github@test.com", "12345");
+
+        when(jwtProvider.validateRefreshToken("refresh-token")).thenReturn(true);
+        when(jwtProvider.getUserIdFromToken("refresh-token")).thenReturn(1L);
+        when(userService.findById(1L)).thenReturn(Optional.of(user));
+        when(jwtProvider.generateAccessToken(user)).thenReturn("new-access-token");
+        when(jwtProvider.generateRefreshToken(user)).thenReturn("new-refresh-token");
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"refresh-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"));
+    }
+
+    @Test
+    @DisplayName("refreshToken - 유효하지 않은 refreshToken이면 401을 반환한다")
+    void refreshToken_InvalidToken() throws Exception {
+        when(jwtProvider.validateRefreshToken("invalid-token")).thenReturn(false);
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"invalid-token\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
 }

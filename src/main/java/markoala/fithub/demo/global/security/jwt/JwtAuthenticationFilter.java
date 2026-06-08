@@ -33,7 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
 
-            if (jwtProvider.validateToken(token)) {
+            if (jwtProvider.validateAccessToken(token)) {
                 Long userId = jwtProvider.getUserIdFromToken(token);
                 log.debug("[JWT] Authenticated user: (ID: {})", userId);
 
