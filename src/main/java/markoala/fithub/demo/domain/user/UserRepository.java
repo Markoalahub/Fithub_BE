@@ -20,12 +20,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update User u
-            set u.aiPipelineGenerationRemainingCount = coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) - 1
+            set u.aiPipelineGenerationRemainingCount = coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) - :amount
             where u.id = :userId
-              and coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) > 0
+              and coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) >= :amount
             """)
     int decreaseAiPipelineGenerationRemainingCount(
             @Param("userId") Long userId,
+            @Param("amount") int amount,
             @Param("defaultLimit") int defaultLimit
     );
 
@@ -34,14 +35,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
             update User u
             set u.aiPipelineGenerationRemainingCount =
                 case
-                    when coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) >= :defaultLimit
+                    when coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) + :amount >= :defaultLimit
                     then :defaultLimit
-                    else coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) + 1
+                    else coalesce(u.aiPipelineGenerationRemainingCount, :defaultLimit) + :amount
                 end
             where u.id = :userId
             """)
     int restoreAiPipelineGenerationRemainingCount(
             @Param("userId") Long userId,
+            @Param("amount") int amount,
             @Param("defaultLimit") int defaultLimit
     );
 }

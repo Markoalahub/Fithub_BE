@@ -1,0 +1,82 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: fithub-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-fithub}
+      MYSQL_USER: ${MYSQL_USER:-fithub}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - fithub-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  fithub-ai:
+    image: ${FITHUB_AI_IMAGE:-meongja/fithub-ai:latest}
+    container_name: fithub-ai
+    restart: unless-stopped
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DATABASE_URL: ${FASTAPI_DATABASE_URL:-sqlite+aiosqlite:////app/data/fitai_v2.db}
+      LANGCHAIN_TRACING_ENABLED: ${LANGCHAIN_TRACING_ENABLED:-false}
+      TZ: Asia/Seoul
+    volumes:
+      - fithub-ai-data:/app/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  fithub-be:
+    image: ${FITHUB_BE_IMAGE:-meongja/fithub-be:latest}
+    container_name: fithub-be
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      fithub-ai:
+        condition: service_healthy
+    ports:
+      - "${FITHUB_BE_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-fithub}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-fithub}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      FASTAPI_BASE_URL: http://fithub-ai:8000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600}
+      JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-3600000}
+      JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI}
+      GITHUB_OAUTH_REDIRECT_URI: ${GITHUB_OAUTH_REDIRECT_URI}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+      KAKAO_OAUTH_REDIRECT_URI: ${KAKAO_OAUTH_REDIRECT_URI}
+      APP_FRONTEND_ALLOWED_ORIGIN_PATTERNS: ${APP_FRONTEND_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*}
+      SWAGGER_UI_ENABLED: ${SWAGGER_UI_ENABLED:-true}
+      JAVA_OPTS: ${JAVA_OPTS:-}
+      TZ: Asia/Seoul
+
+volumes:
+  fithub-mysql-data:
+  fithub-ai-data:

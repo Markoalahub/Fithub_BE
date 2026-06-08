@@ -179,12 +179,21 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public void consumeAiPipelineGenerationQuota(Long userId) {
+        consumeAiPipelineGenerationQuota(userId, 1);
+    }
+
+    @Transactional
+    public void consumeAiPipelineGenerationQuota(Long userId, int amount) {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+        if (amount <= 0) {
+            throw new IllegalArgumentException("차감할 파이프라인 생성 횟수는 1 이상이어야 합니다.");
         }
 
         int updated = userRepository.decreaseAiPipelineGenerationRemainingCount(
                 userId,
+                amount,
                 User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT
         );
         if (updated > 0) {
@@ -194,7 +203,7 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId));
 
-        if (user.getAiPipelineGenerationRemainingCount() <= 0) {
+        if (user.getAiPipelineGenerationRemainingCount() < amount) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "파이프라인 생성 가능 횟수를 모두 사용했습니다.");
         }
 
@@ -203,11 +212,19 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public void restoreAiPipelineGenerationQuota(Long userId) {
+        restoreAiPipelineGenerationQuota(userId, 1);
+    }
+
+    @Transactional
+    public void restoreAiPipelineGenerationQuota(Long userId, int amount) {
         if (userId == null) {
             return;
         }
+        if (amount <= 0) {
+            return;
+        }
 
-        userRepository.restoreAiPipelineGenerationRemainingCount(userId, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
+        userRepository.restoreAiPipelineGenerationRemainingCount(userId, amount, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
     }
 
     /**

@@ -202,7 +202,7 @@ class EndToEndPipelineIntegrationTest {
                 .andExpect(jsonPath("$.feats[1].feat_title").value("데이터베이스 설계"))
                 .andExpect(jsonPath("$.feats[2].feat_title").value("인증 구현"));
 
-        verify(userService).consumeAiPipelineGenerationQuota(TEST_USER_ID);
+        verify(userService).consumeAiPipelineGenerationQuota(TEST_USER_ID, 1);
     }
 
     @Test

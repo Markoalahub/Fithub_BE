@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User {
 
-    public static final int DEFAULT_AI_PIPELINE_GENERATION_LIMIT = 100;
+    public static final int DEFAULT_AI_PIPELINE_GENERATION_LIMIT = 2;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,7 +49,7 @@ public class User {
     @Column(name = "kakao_access_token")
     private String kakaoAccessToken;
 
-    @Column(name = "ai_pipeline_generation_remaining_count", nullable = false, columnDefinition = "integer default 100")
+    @Column(name = "ai_pipeline_generation_remaining_count", nullable = false, columnDefinition = "integer default 2")
     private Integer aiPipelineGenerationRemainingCount = DEFAULT_AI_PIPELINE_GENERATION_LIMIT;
 
     @CreationTimestamp
