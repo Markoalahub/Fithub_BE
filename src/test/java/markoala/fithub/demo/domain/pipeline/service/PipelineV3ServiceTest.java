@@ -143,7 +143,7 @@ class PipelineV3ServiceTest {
 
         verify(projectRepository).findById(1L);
         verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
-        verify(userService).consumeAiPipelineGenerationQuota(1L);
+        verify(userService).consumeAiPipelineGenerationQuota(1L, 2);
         verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
         verify(pipelineV3Client).generateV3Pipeline(argThat(req -> req != null && "BE".equals(req.category())));
         verify(pipelineV3Client).generateV3Pipeline(argThat(req -> req != null && "FE".equals(req.category())));
@@ -165,7 +165,7 @@ class PipelineV3ServiceTest {
         when(projectMemberRepository.findByProjectIdAndUserId(1L, 1L))
                 .thenReturn(Optional.of(ProjectMember.createMember(1L, 1L, "PLANNER")));
         doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "파이프라인 생성 가능 횟수를 모두 사용했습니다."))
-                .when(userService).consumeAiPipelineGenerationQuota(1L);
+                .when(userService).consumeAiPipelineGenerationQuota(1L, 1);
 
         assertThatThrownBy(() -> pipelineV3Service.generateV3Pipeline(1L, request))
                 .isInstanceOf(ResponseStatusException.class)
@@ -173,8 +173,36 @@ class PipelineV3ServiceTest {
 
         verify(projectRepository).findById(1L);
         verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
-        verify(userService).consumeAiPipelineGenerationQuota(1L);
+        verify(userService).consumeAiPipelineGenerationQuota(1L, 1);
         verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong());
+        verifyNoInteractions(pipelineV3Client);
+    }
+
+    @Test
+    @DisplayName("ALL 파이프라인 생성에 필요한 생성 횟수가 부족하면 FastAPI를 호출하지 않는다")
+    void generateV3Pipeline_AllCategoryQuotaExceeded_DoesNotCallClient() {
+        PipelineV3Request request = new PipelineV3Request(
+                1L,
+                "requirements",
+                "ALL",
+                "Spring Boot, React",
+                null
+        );
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.createProject("Fithub", "desc", 1L)));
+        when(projectMemberRepository.findByProjectIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(ProjectMember.createMember(1L, 1L, "PLANNER")));
+        doThrow(new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "파이프라인 생성 가능 횟수를 모두 사용했습니다."))
+                .when(userService).consumeAiPipelineGenerationQuota(1L, 2);
+
+        assertThatThrownBy(() -> pipelineV3Service.generateV3Pipeline(1L, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("파이프라인 생성 가능 횟수를 모두 사용했습니다.");
+
+        verify(projectRepository).findById(1L);
+        verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
+        verify(userService).consumeAiPipelineGenerationQuota(1L, 2);
+        verify(userService, never()).restoreAiPipelineGenerationQuota(anyLong(), anyInt());
         verifyNoInteractions(pipelineV3Client);
     }
 
@@ -200,8 +228,8 @@ class PipelineV3ServiceTest {
 
         verify(projectRepository).findById(1L);
         verify(projectMemberRepository).findByProjectIdAndUserId(1L, 1L);
-        verify(userService).consumeAiPipelineGenerationQuota(1L);
-        verify(userService).restoreAiPipelineGenerationQuota(1L);
+        verify(userService).consumeAiPipelineGenerationQuota(1L, 1);
+        verify(userService).restoreAiPipelineGenerationQuota(1L, 1);
         verify(pipelineV3Client).generateV3Pipeline(request);
     }
 

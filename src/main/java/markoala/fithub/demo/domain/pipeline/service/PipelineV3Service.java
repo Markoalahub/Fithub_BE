@@ -99,9 +99,10 @@ public class PipelineV3Service {
 
         validateProjectMember(userId, request.projectId());
 
-        userService.consumeAiPipelineGenerationQuota(userId);
+        String category = request.category() == null ? "BE" : request.category().trim().toUpperCase();
+        int quotaAmount = "ALL".equals(category) ? ALL_CATEGORIES.size() : 1;
+        userService.consumeAiPipelineGenerationQuota(userId, quotaAmount);
         try {
-            String category = request.category() == null ? "BE" : request.category().trim().toUpperCase();
             if ("ALL".equals(category)) {
                 List<PipelineV3Response> pipelines = ALL_CATEGORIES.stream()
                         .map(categoryName -> pipelineV3Client.generateV3Pipeline(new PipelineV3Request(
@@ -127,7 +128,7 @@ public class PipelineV3Service {
 
             return response;
         } catch (RuntimeException e) {
-            userService.restoreAiPipelineGenerationQuota(userId);
+            userService.restoreAiPipelineGenerationQuota(userId, quotaAmount);
             throw e;
         }
     }

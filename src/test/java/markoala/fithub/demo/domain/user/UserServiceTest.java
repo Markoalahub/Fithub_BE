@@ -213,12 +213,24 @@ class UserServiceTest {
     @Test
     @DisplayName("consumeAiPipelineGenerationQuota - 성공")
     void consumeAiPipelineGenerationQuota_Success() {
-        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, 1, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
                 .thenReturn(1);
 
         userService.consumeAiPipelineGenerationQuota(1L);
 
-        verify(userRepository).decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
+        verify(userRepository).decreaseAiPipelineGenerationRemainingCount(1L, 1, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
+        verify(userRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("consumeAiPipelineGenerationQuota - 요청 횟수만큼 차감한다")
+    void consumeAiPipelineGenerationQuota_AmountSuccess() {
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, 2, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+                .thenReturn(1);
+
+        userService.consumeAiPipelineGenerationQuota(1L, 2);
+
+        verify(userRepository).decreaseAiPipelineGenerationRemainingCount(1L, 2, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
         verify(userRepository, never()).findById(anyLong());
     }
 
@@ -229,13 +241,13 @@ class UserServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
 
-        verify(userRepository, never()).decreaseAiPipelineGenerationRemainingCount(any(), anyInt());
+        verify(userRepository, never()).decreaseAiPipelineGenerationRemainingCount(any(), anyInt(), anyInt());
     }
 
     @Test
     @DisplayName("consumeAiPipelineGenerationQuota - 실패 (사용자 없음)")
     void consumeAiPipelineGenerationQuota_UserNotFound() {
-        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, 1, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
                 .thenReturn(0);
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -251,7 +263,7 @@ class UserServiceTest {
     void consumeAiPipelineGenerationQuota_TooManyRequests() {
         User user = new User(1L, "user1", "nick", "test@test.com", "s1", true, null, null, null, null);
 
-        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, 1, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
                 .thenReturn(0);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         org.springframework.test.util.ReflectionTestUtils.setField(user, "aiPipelineGenerationRemainingCount", 0);
@@ -268,11 +280,40 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("consumeAiPipelineGenerationQuota - 실패 (요청 횟수보다 잔여 횟수가 부족)")
+    void consumeAiPipelineGenerationQuota_NotEnoughRemainingCount() {
+        User user = new User(1L, "user1", "nick", "test@test.com", "s1", true, null, null, null, null);
+
+        when(userRepository.decreaseAiPipelineGenerationRemainingCount(1L, 2, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT))
+                .thenReturn(0);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "aiPipelineGenerationRemainingCount", 1);
+
+        assertThatThrownBy(() -> userService.consumeAiPipelineGenerationQuota(1L, 2))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                    assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+                    assertThat(responseStatusException.getReason()).isEqualTo("파이프라인 생성 가능 횟수를 모두 사용했습니다.");
+                });
+
+        verify(userRepository).findById(1L);
+    }
+
+    @Test
     @DisplayName("restoreAiPipelineGenerationQuota - 차감된 생성 가능 횟수를 복구한다")
     void restoreAiPipelineGenerationQuota_Success() {
         userService.restoreAiPipelineGenerationQuota(1L);
 
-        verify(userRepository).restoreAiPipelineGenerationRemainingCount(1L, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
+        verify(userRepository).restoreAiPipelineGenerationRemainingCount(1L, 1, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
+    }
+
+    @Test
+    @DisplayName("restoreAiPipelineGenerationQuota - 요청 횟수만큼 복구한다")
+    void restoreAiPipelineGenerationQuota_AmountSuccess() {
+        userService.restoreAiPipelineGenerationQuota(1L, 2);
+
+        verify(userRepository).restoreAiPipelineGenerationRemainingCount(1L, 2, User.DEFAULT_AI_PIPELINE_GENERATION_LIMIT);
     }
 
     @Test

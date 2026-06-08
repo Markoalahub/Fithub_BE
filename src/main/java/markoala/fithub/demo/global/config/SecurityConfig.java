@@ -62,6 +62,7 @@ public class SecurityConfig {
                                                 // Swagger, 인증 관련
                                                 .requestMatchers(
                                                         "/",
+                                                        "/health",
                                                         "/error",
                                                         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                                                         "/auth/token",
