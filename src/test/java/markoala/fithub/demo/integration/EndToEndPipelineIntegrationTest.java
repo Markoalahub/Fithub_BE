@@ -1,22 +1,26 @@
 package markoala.fithub.demo.integration;
 
-import markoala.fithub.demo.github.dto.GithubRepositoryDto;
-import markoala.fithub.demo.github.service.GithubRepositoryService;
+import markoala.fithub.demo.domain.github.dto.GithubRepositoryDto;
+import markoala.fithub.demo.domain.github.service.GithubRepositoryService;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
-import markoala.fithub.demo.issue.GithubRepository;
-import markoala.fithub.demo.issue.GitHubIssueService;
-import markoala.fithub.demo.issue.Issue;
-import markoala.fithub.demo.issue.IssueRepository;
-import markoala.fithub.demo.issue.IssueSync;
-import markoala.fithub.demo.issue.IssueSyncRepository;
-import markoala.fithub.demo.issue.RepositoryRepository;
-import markoala.fithub.demo.pipeline.PipelineClient;
-import markoala.fithub.demo.pipeline.dto.PipelineResponse;
-import markoala.fithub.demo.pipeline.dto.PipelineStepResponse;
-import markoala.fithub.demo.project.Project;
-import markoala.fithub.demo.project.ProjectRepository;
-import markoala.fithub.demo.user.User;
-import markoala.fithub.demo.user.UserService;
+import markoala.fithub.demo.domain.issue.GithubRepository;
+import markoala.fithub.demo.domain.issue.GitHubIssueService;
+import markoala.fithub.demo.domain.issue.Issue;
+import markoala.fithub.demo.domain.issue.IssueRepository;
+import markoala.fithub.demo.domain.issue.IssueSync;
+import markoala.fithub.demo.domain.issue.IssueSyncRepository;
+import markoala.fithub.demo.domain.issue.RepositoryRepository;
+import markoala.fithub.demo.domain.pipeline.PipelineClient;
+import markoala.fithub.demo.domain.pipeline.client.PipelineV3Client;
+import markoala.fithub.demo.domain.pipeline.dto.PipelineStepResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.FeatResponse;
+import markoala.fithub.demo.domain.pipeline.dto.response.PipelineV3Response;
+import markoala.fithub.demo.domain.project.Project;
+import markoala.fithub.demo.domain.project.ProjectMember;
+import markoala.fithub.demo.domain.project.ProjectMemberRepository;
+import markoala.fithub.demo.domain.project.ProjectRepository;
+import markoala.fithub.demo.domain.user.User;
+import markoala.fithub.demo.domain.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,7 +36,6 @@ import java.util.List;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -50,6 +53,9 @@ class EndToEndPipelineIntegrationTest {
     private ProjectRepository projectRepository;
 
     @Autowired
+    private ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
     private RepositoryRepository repositoryRepository;
 
     @Autowired
@@ -63,6 +69,9 @@ class EndToEndPipelineIntegrationTest {
 
     @MockBean
     private PipelineClient pipelineClient;
+
+    @MockBean
+    private PipelineV3Client pipelineV3Client;
 
     @MockBean
     private GitHubIssueService gitHubIssueService;
@@ -84,11 +93,13 @@ class EndToEndPipelineIntegrationTest {
         issueSyncRepository.deleteAll();
         issueRepository.deleteAll();
         repositoryRepository.deleteAll();
+        projectMemberRepository.deleteAll();
         projectRepository.deleteAll();
 
         // Create test project
-        testProject = Project.createProject("Test Project", "Test Description");
+        testProject = Project.createProject("Test Project", "Test Description", TEST_USER_ID);
         testProject = projectRepository.save(testProject);
+        projectMemberRepository.save(ProjectMember.createMember(testProject.getId(), TEST_USER_ID, "PLANNER"));
 
         // Setup JWT mock
         User testUser = new User(TEST_USER_ID, "testuser", "test@example.com", "USER", "github123", true, "ghp_test_token", null, null, null);
@@ -113,7 +124,10 @@ class EndToEndPipelineIntegrationTest {
                 1,
                 "Python",
                 "2024-01-01T00:00:00Z",
-                "2024-04-12T00:00:00Z"
+                "2024-04-12T00:00:00Z",
+                "main",
+                "2024-04-12T00:00:00Z",
+                "https://github.com/KYH-99/travel-plan.git"
             )
         );
         when(githubRepositoryService.getMyRepos()).thenReturn(mockGithubRepos);
@@ -132,7 +146,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/v1/projects/{projectId}/repositories/sync", testProject.getId())
+        mockMvc.perform(post("/projects/{projectId}/repositories/sync", testProject.getId())
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
@@ -159,35 +173,57 @@ class EndToEndPipelineIntegrationTest {
         testRepository = repositoryRepository.save(testRepository);
 
         // Mock FastAPI response
-        var mockPipeline = new PipelineResponse(
-            1L,
-            testProject.getId(),
-            "BE",
-            1L,
-            true,
-            List.of(
-                new PipelineStepResponse(1L, 1L, "API 설계", "REST API 설계", false, "ai_generated"),
-                new PipelineStepResponse(2L, 1L, "데이터베이스 설계", "DB 스키마 설계", false, "ai_generated"),
-                new PipelineStepResponse(3L, 1L, "인증 구현", "JWT 기반 인증", false, "ai_generated")
-            )
+        var mockPipeline = new PipelineV3Response(
+                1L,
+                testProject.getId(),
+                "BE",
+                1,
+                "Spring Boot",
+                List.of(
+                        new FeatResponse(1L, "API 설계", List.of("REST API 설계"), 1),
+                        new FeatResponse(2L, "데이터베이스 설계", List.of("DB 스키마 설계"), 1),
+                        new FeatResponse(3L, "인증 구현", List.of("JWT 기반 인증"), 1)
+                )
         );
 
-        when(pipelineClient.generateAndSavePipeline(
-            eq(testProject.getId()),
-            eq("BE"),
-            isNull(),
-            any()
-        )).thenReturn(mockPipeline);
+        when(pipelineV3Client.generateV3Pipeline(argThat(request ->
+                request != null && "BE".equals(request.category())
+        ))).thenReturn(mockPipeline);
 
         // Generate pipeline
-        mockMvc.perform(post("/api/v1/pipelines/generate-all")
+        mockMvc.perform(multipart("/pipelines/generate")
+                .param("project_id", testProject.getId().toString())
+                .param("requirements", "여행 계획 서비스를 만들어줘")
+                .param("category", "BE")
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.feats.length()").value(3))
+                .andExpect(jsonPath("$.feats[0].feat_title").value("API 설계"))
+                .andExpect(jsonPath("$.feats[1].feat_title").value("데이터베이스 설계"))
+                .andExpect(jsonPath("$.feats[2].feat_title").value("인증 구현"));
+
+        verify(userService).consumeAiPipelineGenerationQuota(TEST_USER_ID, 1);
+    }
+
+    @Test
+    @DisplayName("레거시 파이프라인 생성 API는 제거된다")
+    void legacyPipelineGenerationEndpoints_NotFound() throws Exception {
+        mockMvc.perform(post("/v1/pipelines/generate")
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "projectId": 1,
+                          "requirements": "requirements",
+                          "category": "BE"
+                        }
+                        """))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(multipart("/v1/pipelines/generate-all")
                 .param("projectId", testProject.getId().toString())
-                .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.pipelines[0].steps.length()").value(3))
-                .andExpect(jsonPath("$.pipelines[0].steps[0].title").value("API 설계"))
-                .andExpect(jsonPath("$.pipelines[0].steps[1].title").value("데이터베이스 설계"))
-                .andExpect(jsonPath("$.pipelines[0].steps[2].title").value("인증 구현"));
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -217,8 +253,9 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(put("/api/v1/pipelines/steps/{stepId}", 1L)
+        mockMvc.perform(put("/v1/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("수정된 API 설계"))
@@ -247,7 +284,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """.formatted(testRepository.getId());
 
-        mockMvc.perform(post("/api/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
+        mockMvc.perform(post("/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(requestBody))
@@ -307,7 +344,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
             
-        mockMvc.perform(post("/api/v1/issues/{issueId}/sync", testIssue.getId())
+        mockMvc.perform(post("/issues/{issueId}/sync", testIssue.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(syncRequestBody)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
@@ -325,7 +362,8 @@ class EndToEndPipelineIntegrationTest {
             new GithubRepositoryDto(
                 1207474638L, "travel-plan", "KYH-99/travel-plan",
                 "https://github.com/KYH-99/travel-plan", "Travel planning app",
-                false, 1, 1, "Python", "2024-01-01T00:00:00Z", "2024-04-12T00:00:00Z"
+                false, 1, 1, "Python", "2024-01-01T00:00:00Z", "2024-04-12T00:00:00Z",
+                "main", "2024-04-12T00:00:00Z", "https://github.com/KYH-99/travel-plan.git"
             )
         );
         when(githubRepositoryService.getMyRepos()).thenReturn(mockGithubRepos);
@@ -344,7 +382,7 @@ class EndToEndPipelineIntegrationTest {
             """;
 
         var syncResponse = mockMvc.perform(
-                post("/api/v1/projects/{projectId}/repositories/sync", testProject.getId())
+                post("/projects/{projectId}/repositories/sync", testProject.getId())
                     .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(syncBody))
@@ -354,22 +392,28 @@ class EndToEndPipelineIntegrationTest {
         testRepository = repositoryRepository.findByProjectId(testProject.getId()).get(0);
 
         // 2. Generate Pipeline
-        var mockPipeline = new PipelineResponse(
-            1L, testProject.getId(), "BE", 1L, true,
-            List.of(
-                new PipelineStepResponse(1L, 1L, "API 설계", "REST API", false, "ai_generated"),
-                new PipelineStepResponse(2L, 1L, "DB 설계", "Schema", false, "ai_generated")
-            )
+        var mockPipeline = new PipelineV3Response(
+                1L,
+                testProject.getId(),
+                "BE",
+                1,
+                "Spring Boot",
+                List.of(
+                        new FeatResponse(1L, "API 설계", List.of("REST API"), 1),
+                        new FeatResponse(2L, "DB 설계", List.of("Schema"), 1)
+                )
         );
-        when(pipelineClient.generateAndSavePipeline(
-            eq(testProject.getId()), eq("BE"), isNull(), any()
-        )).thenReturn(mockPipeline);
+        when(pipelineV3Client.generateV3Pipeline(argThat(request ->
+                request != null && "BE".equals(request.category())
+        ))).thenReturn(mockPipeline);
 
-        mockMvc.perform(post("/api/v1/pipelines/generate-all")
-                .param("projectId", testProject.getId().toString())
-                .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.pipelines[0].steps.length()").value(2));
+        mockMvc.perform(multipart("/pipelines/generate")
+                .param("project_id", testProject.getId().toString())
+                .param("requirements", "여행 계획 서비스를 만들어줘")
+                .param("category", "BE")
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.feats.length()").value(2));
 
         // 3. Update Pipeline Step
         var updatedStep = new PipelineStepResponse(
@@ -377,8 +421,9 @@ class EndToEndPipelineIntegrationTest {
         );
         when(pipelineClient.updatePipelineStep(eq(1L), any())).thenReturn(updatedStep);
 
-        mockMvc.perform(put("/api/v1/pipelines/steps/{stepId}", 1L)
+        mockMvc.perform(put("/v1/pipelines/steps/{stepId}", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content("{\"title\":\"수정된 API 설계\",\"description\":\"GraphQL + REST\",\"is_completed\":false}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("수정된 API 설계"));
@@ -393,7 +438,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """.formatted(testRepository.getId());
 
-        mockMvc.perform(post("/api/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
+        mockMvc.perform(post("/v1/pipelines/steps/{pipelineStepId}/create-issue", 1L)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN)
                 .content(issueBody))
@@ -416,7 +461,7 @@ class EndToEndPipelineIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/v1/issues/{issueId}/sync", createdIssue.getId())
+        mockMvc.perform(post("/issues/{issueId}/sync", createdIssue.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(syncBody2)
                 .header("Authorization", "Bearer " + TEST_JWT_TOKEN))

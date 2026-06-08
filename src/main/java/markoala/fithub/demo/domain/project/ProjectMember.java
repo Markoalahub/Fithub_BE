@@ -1,0 +1,60 @@
+package markoala.fithub.demo.domain.project;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
+
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "project_members")
+public class ProjectMember {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "project_id", nullable = false)
+    private Long projectId;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
+    @Column(nullable = false)
+    private String role;
+
+    @CreationTimestamp
+    @Column(name = "joined_at", nullable = false, updatable = false)
+    private LocalDateTime joinedAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    
+
+    public ProjectMember(Long id, Long projectId, Long userId, String role, LocalDateTime joinedAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.projectId = projectId;
+        this.userId = userId;
+        this.role = role;
+        this.joinedAt = joinedAt;
+        this.updatedAt = updatedAt;
+    }
+
+
+
+    public static ProjectMember createMember(Long projectId, Long userId, String role) {
+        return new ProjectMember(null, projectId, userId, role, null, null);
+    }
+
+    public void updateRole(String newRole) {
+        this.role = newRole;
+    }
+}

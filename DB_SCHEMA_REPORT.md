@@ -358,7 +358,7 @@ CREATE TABLE audit_logs (
 ### 1. 사용자 로그인 플로우
 
 ```
-1. 사용자 → GET /auth/login
+1. 사용자 → GET /auth/github/login
 2. 서버 → GitHub OAuth 리다이렉트
 3. GitHub → 사용자 인증 및 권한 확인
 4. GitHub → 콜백: code=xxx

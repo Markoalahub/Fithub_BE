@@ -1,0 +1,16 @@
+.git
+.gradle
+.idea
+.vscode
+build
+out
+data
+*.db
+*.mv.db
+*.trace.db
+*.lock.db
+*.log
+*.pdf
+.DS_Store
+src/main/resources/application.yml
+src/main/resources/application.yaml
