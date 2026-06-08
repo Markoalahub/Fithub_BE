@@ -66,6 +66,7 @@ public class SecurityConfig {
                                                         "/error",
                                                         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                                                         "/auth/token",
+                                                        "/auth/refresh",
                                                         "/auth/dev/token",  // [DEV ONLY] 운영 시 제거
                                                         "/auth/github/login",
                                                         "/auth/github/callback",

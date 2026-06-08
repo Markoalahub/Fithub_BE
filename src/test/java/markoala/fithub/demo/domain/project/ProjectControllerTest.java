@@ -66,7 +66,7 @@ public class ProjectControllerTest {
 
     @BeforeEach
     void setUp() {
-        when(jwtProvider.validateToken(anyString())).thenReturn(true);
+        when(jwtProvider.validateAccessToken(anyString())).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(anyString())).thenReturn(1L);
     }
 

@@ -16,6 +16,8 @@ import markoala.fithub.demo.domain.auth.dto.SessionTokenResponse;
 import markoala.fithub.demo.domain.auth.dto.SignupResponse;
 import markoala.fithub.demo.domain.auth.dto.JobRoleUpdateResponse;
 import markoala.fithub.demo.domain.auth.dto.DevTokenResponse;
+import markoala.fithub.demo.domain.auth.dto.RefreshTokenRequest;
+import markoala.fithub.demo.domain.auth.dto.RefreshTokenResponse;
 import markoala.fithub.demo.global.security.jwt.JwtProvider;
 import markoala.fithub.demo.domain.github.service.GithubRepositoryService;
 import markoala.fithub.demo.domain.user.User;
@@ -29,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
@@ -475,6 +478,37 @@ public class AuthController {
                     null
             ));
         }
+    }
+
+    @PostMapping("/refresh")
+    @ResponseBody
+    @Operation(
+            summary = "Access Token 재발급",
+            description = "로그인 시 발급받은 refreshToken을 검증하고 새로운 accessToken과 refreshToken을 발급합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "토큰 재발급 성공",
+                    content = @Content(schema = @Schema(implementation = RefreshTokenResponse.class))),
+            @ApiResponse(responseCode = "400", description = "refreshToken 누락 또는 잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "유효하지 않거나 만료된 refreshToken"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
+    })
+    public ResponseEntity<RefreshTokenResponse> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        String refreshToken = request.refreshToken();
+        if (!jwtProvider.validateRefreshToken(refreshToken)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다.");
+        }
+
+        Long userId = jwtProvider.getUserIdFromToken(refreshToken);
+        User user = userService.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + userId));
+
+        return ResponseEntity.ok(new RefreshTokenResponse(
+                jwtProvider.generateAccessToken(user),
+                jwtProvider.generateRefreshToken(user)
+        ));
     }
 
     @Hidden

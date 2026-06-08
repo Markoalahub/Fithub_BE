@@ -103,7 +103,7 @@ class EndToEndPipelineIntegrationTest {
 
         // Setup JWT mock
         User testUser = new User(TEST_USER_ID, "testuser", "test@example.com", "USER", "github123", true, "ghp_test_token", null, null, null);
-        when(jwtProvider.validateToken(TEST_JWT_TOKEN)).thenReturn(true);
+        when(jwtProvider.validateAccessToken(TEST_JWT_TOKEN)).thenReturn(true);
         when(jwtProvider.getUserIdFromToken(TEST_JWT_TOKEN)).thenReturn(TEST_USER_ID);
         when(userService.findById(TEST_USER_ID)).thenReturn(java.util.Optional.of(testUser));
     }

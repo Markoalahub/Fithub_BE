@@ -16,6 +16,9 @@ import java.util.Date;
 public class JwtProvider {
 
     private static final Logger log = LoggerFactory.getLogger(JwtProvider.class);
+    private static final String TOKEN_TYPE_CLAIM = "type";
+    private static final String ACCESS_TOKEN_TYPE = "access";
+    private static final String REFRESH_TOKEN_TYPE = "refresh";
 
     private final SecretKey secretKey;
     private final long accessTokenExpirationMs;
@@ -37,6 +40,7 @@ public class JwtProvider {
     public String generateAccessToken(User user) {
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
+                .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
                 .signWith(secretKey)
@@ -49,6 +53,7 @@ public class JwtProvider {
     public String generateRefreshToken(User user) {
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
+                .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpirationMs))
                 .signWith(secretKey)
@@ -59,25 +64,46 @@ public class JwtProvider {
      * Token에서 userId 추출
      */
     public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
+        return Long.parseLong(parseClaims(token).getSubject());
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-
-        return Long.parseLong(claims.getSubject());
     }
 
+    private boolean validateTokenType(String token, String expectedType) {
+        try {
+            Claims claims = parseClaims(token);
+            return expectedType.equals(claims.get(TOKEN_TYPE_CLAIM, String.class));
+        } catch (Exception e) {
+            log.debug("[JWT] Token validation failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean validateAccessToken(String token) {
+        return validateTokenType(token, ACCESS_TOKEN_TYPE);
+    }
+
+    public boolean validateRefreshToken(String token) {
+        return validateTokenType(token, REFRESH_TOKEN_TYPE);
+    }
+
+    @Deprecated
+    public boolean validateToken(String token) {
+        return validateAccessToken(token);
+    }
 
     /**
      * Token 유효성 검증
      */
-    public boolean validateToken(String token) {
+    public boolean validateAnyToken(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
+            parseClaims(token);
             return true;
         } catch (Exception e) {
             log.debug("[JWT] Token validation failed: {}", e.getMessage());
